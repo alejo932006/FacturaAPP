@@ -7,11 +7,13 @@ Compromiso$Estado.class
 Cliente.class
 CrearProductoGUI$EstadoProductoRenderer.class
 ProductoStorage.class
+PedidosWebGUI$1.class
 CrearProductoGUI$4.class
 CompromisosGUI.class
 FacturaGUI.class
 ClientesGUI.class
 ConfiguracionManager.class
+PedidosWebGUI.class
 SeleccionarProductoGUI$1.class
 DashboardGUI.class
 BackupManager.class
@@ -55,6 +57,7 @@ ConsultarOrdenesGUI$OrderStatusRenderer.class
 SeleccionarProductoGUI$2.class
 Empresa.class
 ConsultarDevolucionesGUI.class
+PedidoWebStorage.class
 AjustesSaldoGUI.class
 RentabilidadGUI.class
 LicenseManager.class
@@ -62,6 +65,8 @@ FacturaPrinter.class
 GarantiaStorage.class
 UserSession.class
 CajaGUI$1.class
+PedidosWebGUI$EstadoPedidoRenderer.class
+PedidosWebGUI$3.class
 CompromisosGUI$EstadoCompromisoRenderer.class
 EliminarProductoFacturaGUI$1.class
 CalculosFinancieros.class
@@ -76,12 +81,14 @@ LoginGUI.class
 CrearProductoGUI$3.class
 ReporteVentasGUI.class
 DevolucionStorage.class
+PedidosWebGUI$2.class
 Abono.class
 DevolucionesGUI$1.class
 DevolucionesGUI$DevolucionRenderer.class
 GestionUsuariosGUI.class
 GastosGUI$1.class
 Compromiso$Tipo.class
+PedidoWeb.class
 AjusteStorage.class
 ArqueoCaja.class
 ProcesarPagoGUI.class

@@ -366,6 +366,12 @@ public class DashboardGUI extends JFrame {
 
         menuOpciones.addSeparator();
 
+        JMenuItem itemPedidosWeb = new JMenuItem("Gestionar Pedidos Web");
+        itemPedidosWeb.addActionListener(e -> new PedidosWebGUI().setVisible(true)); 
+        menuOpciones.add(itemPedidosWeb);
+
+        menuOpciones.addSeparator();
+
         JMenuItem itemGestionarGastos = new JMenuItem("Gestionar Gastos");
         itemGestionarGastos.addActionListener(e -> new GastosGUI(null).setVisible(true));
         menuOpciones.add(itemGestionarGastos);
