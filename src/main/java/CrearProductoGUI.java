@@ -23,9 +23,9 @@ public class CrearProductoGUI extends JDialog {
     private JComboBox<String> comboAreaEncargada;
     private JButton btnGestionarLineas;
     private JLabel lblAreaEncargada;
-    
-    // --- NUEVOS CAMPOS PARA PROVEEDOR ---
-    private JTextField txtNombreProveedor, txtNitProveedor;
+    private JTextField txtNitProveedor; // Ahora será solo lectura
+    private JComboBox<Proveedor> comboProveedores;
+    private JButton btnRecargarProveedores;
 
     // --- Componentes de la Lista ---
     private JTable tablaInventario;
@@ -114,7 +114,6 @@ public class CrearProductoGUI extends JDialog {
         txtPrecio = new JTextField(15);
         txtCosto = new JTextField(15);
         
-        txtNombreProveedor = new JTextField(15);
         txtNitProveedor = new JTextField(15);
 
         // Filtro básico para evitar comillas simples que rompan SQL (aunque PreparedStatement lo maneja, es buena práctica en GUI)
@@ -166,17 +165,45 @@ public class CrearProductoGUI extends JDialog {
         panelCampos.add(new JSeparator(), gbc);
         gbc.gridwidth = 1;
 
-        // --- FILA 5: Proveedor ---
+        // --- FILA 5: Proveedor (MODIFICADO: AHORA ES COMBOBOX) ---
         gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
         panelCampos.add(new JLabel("Proveedor:"), gbc);
+        
+        JPanel panelProv = new JPanel(new BorderLayout(5,0));
+        comboProveedores = new JComboBox<>();
+        btnRecargarProveedores = new JButton("↻");
+        btnRecargarProveedores.setToolTipText("Recargar lista de proveedores");
+        
+        panelProv.add(comboProveedores, BorderLayout.CENTER);
+        panelProv.add(btnRecargarProveedores, BorderLayout.EAST);
+        
         gbc.gridx = 1; gbc.weightx = 1.0;
-        panelCampos.add(txtNombreProveedor, gbc);
+        panelCampos.add(panelProv, gbc);
 
+        // --- FILA 6: NIT Proveedor (Ahora automático) ---
         gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
         panelCampos.add(new JLabel("NIT Proveedor:"), gbc);
+        
+        txtNitProveedor = new JTextField(15);
+        txtNitProveedor.setEditable(false); // No se escribe, se llena solo
+        txtNitProveedor.setBackground(new Color(240, 240, 240));
+        
         gbc.gridx = 1; gbc.weightx = 1.0;
         panelCampos.add(txtNitProveedor, gbc);
 
+        // --- LÓGICA DEL COMBOBOX ---
+        cargarComboProveedores();
+        
+        comboProveedores.addActionListener(e -> {
+            Proveedor p = (Proveedor) comboProveedores.getSelectedItem();
+            if (p != null) {
+                txtNitProveedor.setText(p.getNit());
+            } else {
+                txtNitProveedor.setText("N/A");
+            }
+        });
+        
+        btnRecargarProveedores.addActionListener(e -> cargarComboProveedores());
 
         // --- FILA 6: Área Encargada / Línea (NUEVO DISEÑO) ---
         gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
@@ -273,40 +300,50 @@ public class CrearProductoGUI extends JDialog {
             double costo = formatoMoneda.parse(txtCosto.getText()).doubleValue();
             double cantidadIngresada = ((Number) spinnerCantidad.getValue()).doubleValue();
             String unidad = (String) comboUnidad.getSelectedItem();
+            
+            // Área / Línea
             String area = (String) comboAreaEncargada.getSelectedItem();
             if (area == null) area = "";
-            String proveedor = txtNombreProveedor.getText().trim();
-            String nitProv = txtNitProveedor.getText().trim();
+            
+            // --- NUEVO LÓGICA DE PROVEEDOR (ComboBox) ---
+            Proveedor pSeleccionado = (Proveedor) comboProveedores.getSelectedItem();
+            String proveedorNombre = (pSeleccionado != null) ? pSeleccionado.getNombre() : "Sin Proveedor";
+            String proveedorNit = txtNitProveedor.getText().trim(); // NIT automático
 
             if (txtCodigo.isEditable()) {
                 // --- MODO CREAR NUEVO (INSERT) ---
-                Producto nuevoProducto = new Producto(codigo, nombre, precio, costo, cantidadIngresada, "Activo", unidad, area, proveedor, nitProv);
+                Producto nuevoProducto = new Producto(
+                    codigo, nombre, precio, costo, cantidadIngresada, 
+                    "Activo", unidad, area, 
+                    proveedorNombre, proveedorNit // <--- Aquí usamos las variables nuevas
+                );
                 
                 boolean exito = ProductoStorage.guardarProducto(nuevoProducto);
                 if (exito) {
-                    JOptionPane.showMessageDialog(this, "Producto guardado en Base de Datos correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                    JOptionPane.showMessageDialog(this, "Producto guardado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                     cargarProductosEnTabla();
                     limpiarFormulario();
                 }
                 
             } else {
                 // --- MODO EDITAR (UPDATE) ---
-                
-                // Primero buscamos el producto actual en la BD para saber su stock actual
                 List<Producto> listaActual = ProductoStorage.cargarProductos();
                 Optional<Producto> prodActualOpt = listaActual.stream().filter(p -> p.getCodigo().equals(codigo)).findFirst();
                 
-                double stockFinal = cantidadIngresada; // Si no se encuentra, asumimos lo ingresado
+                double stockFinal = cantidadIngresada; 
                 String estadoActual = "Activo";
 
                 if (prodActualOpt.isPresent()) {
                     Producto prodDB = prodActualOpt.get();
-                    // Lógica: Stock Nuevo = Stock que ya tenía + Lo que escribí en el spinner
                     stockFinal = prodDB.getCantidad() + cantidadIngresada;
                     estadoActual = prodDB.getEstado();
                 }
 
-                Producto productoActualizado = new Producto(codigo, nombre, precio, costo, stockFinal, estadoActual, unidad, area, proveedor, nitProv);
+                Producto productoActualizado = new Producto(
+                    codigo, nombre, precio, costo, stockFinal, 
+                    estadoActual, unidad, area, 
+                    proveedorNombre, proveedorNit // <--- Aquí también
+                );
                 
                 boolean exito = ProductoStorage.actualizarProducto(productoActualizado);
                 if (exito) {
@@ -320,11 +357,10 @@ public class CrearProductoGUI extends JDialog {
                 }
             }
             
-            // Actualizar la lista en la ventana de Facturación si está abierta
             if(facturaGUI != null) facturaGUI.refrescarListaProductos();
 
         } catch (ParseException | NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Verifica los datos numéricos.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Verifica los datos numéricos (Precio/Costo).", "Error de Formato", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -336,7 +372,8 @@ public class CrearProductoGUI extends JDialog {
         spinnerCantidad.setValue(0.0); 
         comboUnidad.setSelectedIndex(0);
         if (comboAreaEncargada.getItemCount() > 0) comboAreaEncargada.setSelectedIndex(0);
-        txtNombreProveedor.setText("");
+        if (comboProveedores.getItemCount() > 0) comboProveedores.setSelectedIndex(0);
+            txtNitProveedor.setText("");
         txtNitProveedor.setText("");
         
         txtCodigo.setEditable(true); // Habilitar código para nuevo producto
@@ -378,7 +415,15 @@ public class CrearProductoGUI extends JDialog {
             
             comboUnidad.setSelectedItem(productoACargar.getUnidadDeMedida());
             comboAreaEncargada.setSelectedItem(productoACargar.getAreaEncargada());
-            txtNombreProveedor.setText(productoACargar.getNombreProveedor());
+            String nitDB = productoACargar.getNitProveedor();
+                for (int i = 0; i < comboProveedores.getItemCount(); i++) {
+                    Proveedor item = comboProveedores.getItemAt(i);
+                    if (item.getNit().equals(nitDB)) {
+                        comboProveedores.setSelectedIndex(i);
+                        break;
+                    }
+                }
+                txtNitProveedor.setText(nitDB);
             txtNitProveedor.setText(productoACargar.getNitProveedor());
 
             txtCodigo.setEditable(false); // No se puede editar el código (es Primary Key)
@@ -586,6 +631,16 @@ private void abrirGestionLineas() {
                 }
             }
             return c;
+        }
+    }
+
+    private void cargarComboProveedores() {
+        comboProveedores.removeAllItems();
+        // Agregar opción vacía o genérica
+        comboProveedores.addItem(new Proveedor("N/A", "Sin Proveedor", "", "", ""));
+        
+        for (Proveedor p : ProveedorStorage.listarProveedores()) {
+            comboProveedores.addItem(p);
         }
     }
 }

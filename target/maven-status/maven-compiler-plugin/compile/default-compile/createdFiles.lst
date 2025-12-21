@@ -6,8 +6,10 @@ DevolucionesGUI$3.class
 Compromiso$Estado.class
 Cliente.class
 CrearProductoGUI$EstadoProductoRenderer.class
+Proveedor.class
 ProductoStorage.class
 PedidosWebGUI$1.class
+ProveedoresGUI.class
 CrearProductoGUI$4.class
 CompromisosGUI.class
 FacturaGUI.class
@@ -27,10 +29,12 @@ GeneradorReportesGUI.class
 EliminarProductoFacturaGUI.class
 ClienteSeleccionListener.class
 CompromisoStorage.class
+ProveedoresGUI$1.class
 CrearProductoGUI$2.class
 ConsultarFacturasGUI.class
 ConsultarArqueosGUI$EstadoArqueoRenderer.class
 GestionAbonosGUI.class
+ProveedorStorage.class
 DashboardGUI$VencimientoRenderer.class
 SeleccionarProductoGUI$StockStatusRenderer.class
 ConsultarDevolucionesGUI$2.class

@@ -57,6 +57,52 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                <artifactId>launch4j-maven-plugin</artifactId>
+                <version>2.5.1</version>
+                <executions>
+                    <execution>
+                        <id>l4j-clui</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>launch4j</goal>
+                        </goals>
+                        <configuration>
+                            <headerType>gui</headerType>
+                            <outfile>target/FacturaAPP.exe</outfile>
+                            
+                            <jar>target/facturacion-app-1.0.0-jar-with-dependencies.jar</jar>
+                            
+                            <errTitle>Error al iniciar FacturaAPP</errTitle>
+                            <classPath>
+                                <mainClass>FacturaApp</mainClass>
+                                <addDependencies>false</addDependencies>
+                                <preCp>anything</preCp>
+                            </classPath>
+                            
+                            <icon>src/main/resources/img/logo.ico</icon>
+                            
+                            <jre>
+                                <minVersion>17</minVersion> 
+                                <path>%JAVA_HOME%</path>
+                            </jre>
+                            
+                            <versionInfo>
+                                <fileVersion>1.0.0.0</fileVersion>
+                                <txtFileVersion>1.0.0.0</txtFileVersion>
+                                <fileDescription>Sistema de Facturacion Surtitodo</fileDescription>
+                                <copyright>Alejandro Marmolejo</copyright>
+                                <productVersion>1.0.0.0</productVersion>
+                                <txtProductVersion>1.0.0.0</txtProductVersion>
+                                <productName>FacturaAPP</productName>
+                                <internalName>FacturaAPP</internalName>
+                                <originalFilename>FacturaAPP.exe</originalFilename>
+                            </versionInfo>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
