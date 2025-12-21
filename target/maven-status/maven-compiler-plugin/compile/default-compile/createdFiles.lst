@@ -29,7 +29,6 @@ ClienteSeleccionListener.class
 CompromisoStorage.class
 CrearProductoGUI$2.class
 ConsultarFacturasGUI.class
-BackupManager$1.class
 ConsultarArqueosGUI$EstadoArqueoRenderer.class
 GestionAbonosGUI.class
 DashboardGUI$VencimientoRenderer.class

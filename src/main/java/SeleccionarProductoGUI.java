@@ -274,10 +274,8 @@ public class SeleccionarProductoGUI extends JDialog {
         }
     }
 
-    // El resto de los métodos (eliminar, calcular valor) permanecen como estaban.
     private void eliminarProductoSeleccionado() {
-        // ... (el código para eliminar que ya tenías es correcto y no necesita cambios)
-         int filaSeleccionada = tablaProductos.getSelectedRow();
+        int filaSeleccionada = tablaProductos.getSelectedRow();
         if (filaSeleccionada == -1) {
             JOptionPane.showMessageDialog(this, "Por favor, seleccione un producto para eliminar.", "Ningún producto seleccionado", JOptionPane.WARNING_MESSAGE);
             return;
@@ -287,16 +285,7 @@ public class SeleccionarProductoGUI extends JDialog {
         String codigo = (String) modelo.getValueAt(filaModelo, 0);
         String nombre = (String) modelo.getValueAt(filaModelo, 1);
 
-        if (ProductoStorage.productoTieneMovimiento(codigo)) {
-            JOptionPane.showMessageDialog(this,
-                "<html>El producto '" + nombre + "' no puede ser eliminado porque tiene un historial de ventas.<br><br>" +
-                "<b>Eliminarlo afectaría la precisión de los reportes antiguos.</b><br><br>" +
-                "En su lugar, vaya a 'Gestionar Productos' y use la opción para 'Desactivarlo'.</html>",
-                "Acción no Permitida",
-                JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
+        // 1. Validar Seguridad (Siempre pedir clave para eliminar)
         JPasswordField passwordField = new JPasswordField();
         int option = JOptionPane.showConfirmDialog(this, passwordField, "Ingrese la Clave Administrativa para Eliminar", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
         if (option != JOptionPane.OK_OPTION || !new String(passwordField.getPassword()).equals(ConfiguracionManager.getAdminPassword())) {
@@ -304,18 +293,51 @@ public class SeleccionarProductoGUI extends JDialog {
             return;
         }
 
-        int respuesta = JOptionPane.showConfirmDialog(this,
-            "¿Está seguro de que desea eliminar PERMANENTEMENTE el producto '" + nombre + "'?",
-            "Confirmación Final",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE);
-        if (respuesta == JOptionPane.YES_OPTION) {
-            ProductoStorage.eliminarProducto(codigo);
-            cargarProductos(); // Recargamos para reflejar el cambio
-            facturaGUI.refrescarListaProductos();
-            JOptionPane.showMessageDialog(this, "Producto eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        // 2. Verificar si tiene historial
+        boolean tieneMovimientos = ProductoStorage.productoTieneMovimiento(codigo);
+
+        if (tieneMovimientos) {
+            // --- NUEVA LÓGICA DE BORRADO FORZADO ---
+            String advertencia = "<html><body style='width: 300px; color: red'>" +
+                "<h3>⚠ ADVERTENCIA CRÍTICA ⚠</h3>" +
+                "El producto <b>'" + nombre + "'</b> tiene ventas registradas en el historial.<br><br>" +
+                "Si lo elimina ahora:<br>" +
+                "1. Se borrará el producto del inventario.<br>" +
+                "2. <b>Se eliminará este producto de todas las facturas antiguas</b> donde aparezca.<br>" +
+                "3. Los reportes de ventas pasados podrían alterar sus valores.<br><br>" +
+                "¿Desea proceder con el <b>BORRADO FORZADO</b>?</body></html>";
+
+            int confirmacionFuerte = JOptionPane.showConfirmDialog(this, 
+                advertencia, 
+                "Riesgo de Pérdida de Datos", 
+                JOptionPane.YES_NO_OPTION, 
+                JOptionPane.ERROR_MESSAGE);
+
+            if (confirmacionFuerte == JOptionPane.YES_OPTION) {
+                if (ProductoStorage.eliminarProductoForzado(codigo)) {
+                    cargarProductos(); 
+                    if (facturaGUI != null) facturaGUI.refrescarListaProductos();
+                    JOptionPane.showMessageDialog(this, "Producto y su historial eliminados correctamente.", "Limpieza Completada", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
+        } else {
+            // --- BORRADO NORMAL (SIN HISTORIAL) ---
+            int respuesta = JOptionPane.showConfirmDialog(this,
+                "¿Está seguro de que desea eliminar el producto '" + nombre + "'?",
+                "Confirmar Eliminación",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+            
+            if (respuesta == JOptionPane.YES_OPTION) {
+                if (ProductoStorage.eliminarProducto(codigo)) {
+                    cargarProductos();
+                    if (facturaGUI != null) facturaGUI.refrescarListaProductos();
+                    JOptionPane.showMessageDialog(this, "Producto eliminado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
+                }
+            }
         }
     }
+    
     private void calcularValorInventario() {
         // ... (el código para calcular el valor que ya tenías es correcto y no necesita cambios)
         List<Producto> productosActivos = inventarioCompleto.stream()

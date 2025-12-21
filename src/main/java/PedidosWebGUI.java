@@ -33,6 +33,7 @@ public class PedidosWebGUI extends JFrame {
     private JButton btnCancelar;
     private JButton btnEliminar;
     private JButton btnActualizar;
+    private JButton btnFacturar; // Nuevo botón
 
     public PedidosWebGUI() {
         super("Gestión de Pedidos Web");
@@ -97,12 +98,15 @@ public class PedidosWebGUI extends JFrame {
         btnCancelar = new JButton("Cancelar");
         btnEliminar = new JButton("Eliminar");
         btnActualizar = new JButton("Actualizar");
+        btnFacturar = new JButton("Cargar a Factura");
 
+        styleButton(btnFacturar, new Color(0, 123, 255), Color.WHITE); // Azul brillante
         styleButton(btnDespachar, new Color(40, 167, 69), Color.WHITE);
         styleButton(btnCancelar, new Color(255, 193, 7), Color.BLACK);
         styleButton(btnEliminar, new Color(220, 53, 69), Color.WHITE);
         styleButton(btnActualizar, new Color(108, 117, 125), Color.WHITE);
 
+        panelBotones.add(btnFacturar);
         panelBotones.add(btnDespachar);
         panelBotones.add(btnCancelar);
         panelBotones.add(btnEliminar);
@@ -134,6 +138,33 @@ public class PedidosWebGUI extends JFrame {
         btnDespachar.addActionListener(e -> cambiarEstado("DESPACHADO"));
         btnCancelar.addActionListener(e -> cambiarEstado("CANCELADO"));
         btnEliminar.addActionListener(e -> eliminarPedido());
+        btnFacturar.addActionListener(e -> {
+            int row = tablaPedidos.getSelectedRow();
+            if (row < 0) {
+                JOptionPane.showMessageDialog(this, "Por favor, seleccione un pedido primero.", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            
+            // Obtener el ID del pedido seleccionado
+            int id = (int) tablaPedidos.getValueAt(row, 0);
+            
+            // Buscar el objeto pedido completo en la lista
+            PedidoWeb pedidoSeleccionado = listaPedidosActual.stream()
+                    .filter(p -> p.getId() == id)
+                    .findFirst()
+                    .orElse(null);
+                    
+            if (pedidoSeleccionado != null) {
+                // Abrir la ventana de facturación
+                FacturaGUI nuevaFacturaGUI = new FacturaGUI();
+                
+                // Cargar los datos del pedido
+                nuevaFacturaGUI.cargarPedidoWeb(pedidoSeleccionado);
+                
+                // Hacerla visible
+                nuevaFacturaGUI.setVisible(true);
+            }
+        });
     }
 
     private void styleButton(JButton btn, Color bg, Color fg) {

@@ -155,4 +155,47 @@ public class ProductoStorage {
             actualizarProducto(p);
         }
     }
+
+    // --- NUEVO: BORRADO FORZADO (ELIMINA HISTORIAL Y PRODUCTO) ---
+    public static boolean eliminarProductoForzado(String codigo) {
+        Connection conn = null;
+        try {
+            conn = ConexionDB.conectar();
+            conn.setAutoCommit(false); // Iniciamos transacción manual
+
+            // 1. Eliminar referencias en detalle_facturas
+            String sqlDetalles = "DELETE FROM detalle_facturas WHERE producto_codigo = ?";
+            try (PreparedStatement pstmtDet = conn.prepareStatement(sqlDetalles)) {
+                pstmtDet.setString(1, codigo);
+                pstmtDet.executeUpdate();
+            }
+
+            // 2. Eliminar el producto
+            String sqlProducto = "DELETE FROM productos WHERE codigo = ?";
+            try (PreparedStatement pstmtProd = conn.prepareStatement(sqlProducto)) {
+                pstmtProd.setString(1, codigo);
+                int filas = pstmtProd.executeUpdate();
+                
+                if (filas > 0) {
+                    conn.commit(); // Confirmar cambios
+                    return true;
+                } else {
+                    conn.rollback(); // Si falló borrar producto, deshacer borrado de detalles
+                    return false;
+                }
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            JOptionPane.showMessageDialog(null, "Error crítico al forzar eliminación: " + e.getMessage(), "Error SQL", JOptionPane.ERROR_MESSAGE);
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            }
+        }
+    }
 }

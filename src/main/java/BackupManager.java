@@ -1,128 +1,178 @@
-// Crea este nuevo archivo completo: BackupManager.java
-
 import javax.swing.*;
-import javax.swing.filechooser.FileNameExtensionFilter;
-import java.awt.Component;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.time.LocalDate;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+import java.util.Properties;
+import java.util.Map;
 
 public class BackupManager {
 
-    /**
-     * Inicia el proceso de creación de una copia de seguridad.
-     * Abre un diálogo para que el usuario elija dónde guardar el archivo .zip.
-     */
-    public static void crearCopiaDeSeguridad(Component parent) {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Guardar Copia de Seguridad");
-        // Sugerimos un nombre de archivo con la fecha actual
-        chooser.setSelectedFile(new File("backup_facturaapp_" + LocalDate.now() + ".zip"));
-        chooser.setFileFilter(new FileNameExtensionFilter("Archivos ZIP (*.zip)", "zip"));
+    private static final String NOMBRE_DUMP_SQL = "backup_base_datos.sql";
 
-        if (chooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
-            File archivoDestino = chooser.getSelectedFile();
-            // Asegurarnos de que el archivo tenga la extensión .zip
+    public static void crearCopiaDeSeguridad(JFrame parent) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Guardar Copia de Seguridad Completa (Híbrida)");
+        fileChooser.setSelectedFile(new File("Respaldo_Sistema_" + new SimpleDateFormat("yyyy-MM-dd_HH-mm").format(new Date()) + ".zip"));
+
+        if (fileChooser.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
+            File archivoDestino = fileChooser.getSelectedFile();
             if (!archivoDestino.getName().toLowerCase().endsWith(".zip")) {
-                archivoDestino = new File(archivoDestino.getParentFile(), archivoDestino.getName() + ".zip");
+                archivoDestino = new File(archivoDestino.getAbsolutePath() + ".zip");
             }
 
-            try {
-                Path carpetaFuente = PathsHelper.getDatosFolder().toPath();
-                comprimirCarpeta(carpetaFuente, archivoDestino.toPath());
-                JOptionPane.showMessageDialog(parent, "Copia de seguridad creada exitosamente en:\n" + archivoDestino.getAbsolutePath(), "Éxito", JOptionPane.INFORMATION_MESSAGE);
-            } catch (IOException e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(parent, "Error al crear la copia de seguridad: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
+            File finalArchivoDestino = archivoDestino;
+            new Thread(() -> {
+                try {
+                    // 1. Crear carpeta temporal
+                    File carpetaTemp = Files.createTempDirectory("backup_facturaapp_tmp").toFile();
+                    
+                    // 2. Exportar Base de Datos PostgreSQL
+                    boolean dbExportada = exportarBaseDatosPostgres(new File(carpetaTemp, NOMBRE_DUMP_SQL));
+                    
+                    if (!dbExportada) {
+                        SwingUtilities.invokeLater(() -> 
+                            JOptionPane.showMessageDialog(parent, "Advertencia: No se pudo respaldar la Base de Datos.\nVerifique config.properties.", "Advertencia", JOptionPane.WARNING_MESSAGE)
+                        );
+                    }
 
-    /**
-     * Inicia el proceso de restauración desde una copia de seguridad.
-     * Pide confirmación, luego un diálogo para elegir el archivo .zip y finalmente reinicia la app.
-     */
-    public static void restaurarCopiaDeSeguridad(Component parent) {
-        int respuesta = JOptionPane.showConfirmDialog(
-            parent,
-            "ADVERTENCIA:\n\nRestaurar una copia de seguridad reemplazará TODOS los datos actuales.\n" +
-            "Esta acción es irreversible y la aplicación se cerrará al finalizar.\n\n" +
-            "¿Está seguro de que desea continuar?",
-            "Confirmar Restauración",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.ERROR_MESSAGE
-        );
+                    // 3. Copiar la carpeta de Archivos del Sistema
+                    // --- CORRECCIÓN AQUÍ: Usamos PathsHelper para obtener la ruta real (AppData) ---
+                    File carpetaArchivosOrigen = PathsHelper.getDatosFolder();
+                    
+                    if (carpetaArchivosOrigen.exists()) {
+                        System.out.println("Copiando archivos desde: " + carpetaArchivosOrigen.getAbsolutePath());
+                        // Copiamos todo el contenido de AppData/FacturaApp a una subcarpeta 'archivos_sistema' en el temporal
+                        copiarDirectorio(carpetaArchivosOrigen.toPath(), new File(carpetaTemp, "archivos_sistema").toPath());
+                    } else {
+                        System.err.println("No se encontró la carpeta de datos en: " + carpetaArchivosOrigen.getAbsolutePath());
+                    }
 
-        if (respuesta != JOptionPane.YES_OPTION) {
-            return;
-        }
+                    // 4. Comprimir todo en el ZIP
+                    empaquetarZip(carpetaTemp, finalArchivoDestino);
 
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Seleccionar Copia de Seguridad para Restaurar");
-        chooser.setFileFilter(new FileNameExtensionFilter("Archivos ZIP (*.zip)", "zip"));
+                    // 5. Limpieza
+                    borrarDirectorioRecursivo(carpetaTemp);
 
-        if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
-            File archivoFuente = chooser.getSelectedFile();
-            try {
-                Path carpetaDestino = PathsHelper.getDatosFolder().toPath();
-                descomprimirCarpeta(archivoFuente.toPath(), carpetaDestino);
-                JOptionPane.showMessageDialog(parent, "Restauración completada exitosamente.\nLa aplicación se cerrará ahora.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-                System.exit(0); // Cierra la aplicación para que los cambios surtan efecto al reabrir
-            } catch (IOException e) {
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(parent, "Error al restaurar la copia de seguridad: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
+                    SwingUtilities.invokeLater(() -> 
+                        JOptionPane.showMessageDialog(parent, "Copia de seguridad exitosa en:\n" + finalArchivoDestino.getAbsolutePath())
+                    );
 
-    /**
-     * Lógica interna para comprimir una carpeta a un archivo ZIP.
-     */
-    private static void comprimirCarpeta(Path source, Path target) throws IOException {
-        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(target.toFile()))) {
-            Files.walkFileTree(source, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    zos.putNextEntry(new ZipEntry(source.relativize(file).toString()));
-                    Files.copy(file, zos);
-                    zos.closeEntry();
-                    return FileVisitResult.CONTINUE;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    SwingUtilities.invokeLater(() -> 
+                        JOptionPane.showMessageDialog(parent, "Error al crear respaldo: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE)
+                    );
                 }
-            });
+            }).start();
         }
     }
 
-    /**
-     * Lógica interna para descomprimir un archivo ZIP a una carpeta.
-     */
-    private static void descomprimirCarpeta(Path source, Path target) throws IOException {
-        // Primero, borramos el contenido actual de la carpeta de destino
-        Files.walk(target).sorted(java.util.Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
-        
-        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(source.toFile()))) {
-            ZipEntry zipEntry = zis.getNextEntry();
-            while (zipEntry != null) {
-                Path newPath = target.resolve(zipEntry.getName());
-                if (zipEntry.isDirectory()) {
-                    Files.createDirectories(newPath);
-                } else {
-                    if (newPath.getParent() != null) {
-                        if (Files.notExists(newPath.getParent())) {
-                            Files.createDirectories(newPath.getParent());
+    private static boolean exportarBaseDatosPostgres(File archivoSalida) {
+        try {
+            Properties props = new Properties();
+            File archivoConfig = PathsHelper.getConfigProperties();
+
+            if (archivoConfig.exists()) {
+                try (FileInputStream in = new FileInputStream(archivoConfig)) {
+                    props.load(in);
+                }
+            } else {
+                return false;
+            }
+            
+            String dbName = props.getProperty("db.name", "FacturaAPP");
+            String dbUser = props.getProperty("db.user", "postgres");
+            String dbPass = props.getProperty("db.password", "0534");
+            String pgDumpPath = props.getProperty("db.pgdump_path", "pg_dump"); 
+
+            ProcessBuilder pb = new ProcessBuilder(
+                pgDumpPath,
+                "-h", "localhost",
+                "-p", "5432",
+                "-U", dbUser,
+                "-F", "p",
+                "-f", archivoSalida.getAbsolutePath(),
+                dbName
+            );
+
+            Map<String, String> env = pb.environment();
+            env.put("PGPASSWORD", dbPass);
+
+            pb.redirectErrorStream(true);
+            Process p = pb.start();
+            
+            // Consumir el stream para evitar bloqueos
+            BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+            while (reader.readLine() != null) {
+                // Solo leemos para vaciar el buffer, no necesitamos guardar la variable 'line'
+            }
+            
+            return p.waitFor() == 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static void restaurarCopiaDeSeguridad(JFrame parent) {
+        JOptionPane.showMessageDialog(parent, 
+            "Para restaurar una copia híbrida:\n\n" +
+            "1. Descomprima el ZIP.\n" +
+            "2. Reemplace el contenido de su carpeta de datos (" + PathsHelper.getDatosFolder().getAbsolutePath() + ") con la carpeta 'archivos_sistema'.\n" +
+            "3. Cargue el archivo .sql en PostgreSQL usando pgAdmin.", 
+            "Instrucciones de Restauración", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private static void empaquetarZip(File carpetaOrigen, File archivoZipDestino) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(archivoZipDestino);
+             ZipOutputStream zos = new ZipOutputStream(fos)) {
+            
+            Path sourcePath = carpetaOrigen.toPath();
+            Files.walk(sourcePath)
+                .filter(path -> !Files.isDirectory(path))
+                .forEach(path -> {
+                    // Evitamos empaquetar archivos de bloqueo o temporales si existen
+                    if(!path.toString().endsWith(".lock")) {
+                        ZipEntry zipEntry = new ZipEntry(sourcePath.relativize(path).toString());
+                        try {
+                            zos.putNextEntry(zipEntry);
+                            Files.copy(path, zos);
+                            zos.closeEntry();
+                        } catch (IOException e) {
+                            System.err.println("No se pudo comprimir el archivo: " + path);
                         }
                     }
-                    Files.copy(zis, newPath, StandardCopyOption.REPLACE_EXISTING);
-                }
-                zipEntry = zis.getNextEntry();
-            }
-            zis.closeEntry();
+                });
         }
+    }
+
+    private static void copiarDirectorio(Path source, Path target) throws IOException {
+        Files.walk(source).forEach(sourcePath -> {
+            try {
+                Path targetPath = target.resolve(source.relativize(sourcePath));
+                if (Files.isDirectory(sourcePath)) {
+                    if (!Files.exists(targetPath)) Files.createDirectory(targetPath);
+                } else {
+                    Files.copy(sourcePath, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+            } catch (IOException e) {
+                // Ignoramos errores de copia en archivos bloqueados
+                System.err.println("Error copiando archivo (posiblemente en uso): " + sourcePath);
+            }
+        });
+    }
+    
+    private static void borrarDirectorioRecursivo(File directorio) {
+        if (directorio.isDirectory()) {
+            File[] archivos = directorio.listFiles();
+            if (archivos != null) {
+                for (File archivo : archivos) borrarDirectorioRecursivo(archivo);
+            }
+        }
+        directorio.delete();
     }
 }

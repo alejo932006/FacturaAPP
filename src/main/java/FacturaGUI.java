@@ -13,6 +13,9 @@ import java.util.Locale;
 import java.util.Optional;
 import javax.swing.text.AbstractDocument;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
 
     // --- Componentes de la clase ---
@@ -1116,5 +1119,90 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
             return null;
         }
     }
+
+    // Agrega este método en FacturaGUI.java
+
+public void cargarPedidoWeb(PedidoWeb pedido) {
+    // 1. Limpiar la pantalla actual para evitar mezclas
+    limpiarFormulario();
+    
+    // 2. Mapear datos del Cliente
+    // Como los pedidos web a veces no tienen cédula, usamos "222222222222" (Consumidor Final) 
+    // o "0" si no viene especificada.
+    String nombre = pedido.getClienteNombre();
+    String cedula = "222222222222"; // Valor por defecto para web
+    // Concatenamos dirección y teléfono para el campo de contacto
+    String contacto = pedido.getClienteDireccion() + " | Tel: " + pedido.getClienteTelefono();
+    String email = pedido.getClienteEmail();
+    
+    // Llenar los campos visuales
+    setDatosCliente(nombre, cedula, contacto, email);
+    
+    // 3. Inicializar el objeto Factura
+    if (factura == null) {
+        Cliente cliente = new Cliente(nombre, cedula, contacto, email);
+        String numeroFacturaStr = ConfiguracionManager.getSiguienteNumeroFactura();
+        lblNumeroFactura.setText("Factura Nº: " + numeroFacturaStr);
+        factura = new Factura(cliente, this.empresa, numeroFacturaStr);
+    }
+    
+    // 4. Procesar los productos del JSON
+    try {
+        JSONArray productos = new JSONArray(pedido.getDetalleProductos());
+        boolean faltanProductos = false;
+        
+        for (int i = 0; i < productos.length(); i++) {
+            JSONObject item = productos.getJSONObject(i);
+            
+            // Asumimos que "id" en el JSON corresponde al CÓDIGO del producto en tu sistema
+            String codigoProducto = item.optString("id"); 
+            double cantidad = item.optDouble("qty");
+            String notaWeb = "Pedido Web #" + pedido.getId(); // Para referencia
+            
+            // Buscar el producto en la lista cargada en memoria
+            Producto productoEncontrado = listaProductos.stream()
+                .filter(p -> p.getCodigo().equalsIgnoreCase(codigoProducto))
+                .findFirst()
+                .orElse(null);
+                
+            if (productoEncontrado != null) {
+                // Verificar stock (opcional, aquí solo avisamos)
+                if (productoEncontrado.getCantidad() < cantidad) {
+                    JOptionPane.showMessageDialog(this, 
+                        "Advertencia: El producto " + productoEncontrado.getNombre() + 
+                        " tiene stock bajo (" + productoEncontrado.getCantidad() + ") para este pedido.",
+                        "Stock Insuficiente", JOptionPane.WARNING_MESSAGE);
+                }
+                
+                // Crear el detalle y agregarlo a la factura
+                DetalleFactura detalle = new DetalleFactura(productoEncontrado, cantidad, notaWeb);
+                
+                // Si quieres respetar el precio de la web, úsalo aquí:
+                // detalle.setPrecioUnitario(item.optDouble("precio")); 
+                
+                factura.agregarDetalle(detalle);
+                
+                // Actualizar visualmente el stock disponible en memoria para esta sesión
+                productoEncontrado.setCantidad(productoEncontrado.getCantidad() - cantidad);
+            } else {
+                faltanProductos = true;
+                System.out.println("Producto no encontrado en inventario local: " + codigoProducto);
+            }
+        }
+        
+        if (faltanProductos) {
+            JOptionPane.showMessageDialog(this, 
+                "Algunos productos del pedido web no se encontraron en el inventario local (por código).", 
+                "Productos no cargados", JOptionPane.WARNING_MESSAGE);
+        }
+        
+        // 5. Refrescar la tabla visual
+        actualizarVistaFactura();
+        
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error al procesar el JSON del pedido: " + e.getMessage());
+    }
+}
 
 }
