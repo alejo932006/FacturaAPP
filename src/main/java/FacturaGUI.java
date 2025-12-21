@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import javax.swing.text.AbstractDocument;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -62,7 +61,8 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
 
     public FacturaGUI() {
         setTitle("Sistema de Facturación");
-        setSize(1400, 700);
+        // setSize(1029, 700);
+        setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
         initComponents();
@@ -410,51 +410,107 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         TitledBorder bordeDetalle = BorderFactory.createTitledBorder("Detalle de la Factura");
         bordeDetalle.setTitleColor(new Color(0, 71, 171)); // <-- CAMBIO DE COLOR (Azul oscuro)
         scroll.setBorder(bordeDetalle);
-        // --- Panel Inferior (AQUÍ ESTÁN LOS CAMBIOS IMPORTANTES) ---
-        JPanel panelInferior = new JPanel(new GridBagLayout());
-        GridBagConstraints gbcInferior = new GridBagConstraints();
-        gbcInferior.insets = new Insets(5, 5, 5, 5);
 
+        JPanel panelInferior = new JPanel(new BorderLayout(20, 0)); // Espaciado horizontal
+        panelInferior.setBackground(Color.WHITE);
+        // Borde superior sutil y márgenes internos generosos
+        panelInferior.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(220, 220, 220)), 
+            BorderFactory.createEmptyBorder(15, 20, 15, 20)
+        ));
+
+        // 1. SECCIÓN IZQUIERDA: EL TOTAL (Visualmente impactante)
+        JPanel panelTotalContainer = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panelTotalContainer.setOpaque(false);
+        
         lblTotal = new JLabel("Total: $0.00");
-        lblTotal.setFont(new Font("Arial", Font.BOLD, 16));
+        lblTotal.setFont(new Font("Segoe UI", Font.BOLD, 36)); // Fuente MUY grande
+        lblTotal.setForeground(new Color(34, 139, 34)); // Verde Bosque
+        panelTotalContainer.add(lblTotal);
 
-        JButton btnEliminar = new JButton("Eliminar producto");
-        JButton btnEditar = new JButton("Editar Cantidad");
+        // 2. SECCIÓN DERECHA: BOTONES Y CONTROLES
+        JPanel panelControles = new JPanel(new GridBagLayout());
+        panelControles.setOpaque(false);
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(0, 5, 0, 5); // Espacio entre elementos
 
-        // --- NUEVO: Panel para los radio buttons ---
-        JPanel panelTipoVenta = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panelTipoVenta.setBorder(BorderFactory.createTitledBorder("Tipo de Venta"));
-        radioContado = new JRadioButton("Contado", true); // Seleccionado por defecto
+        // -- Grupo A: Edición (Botones sutiles) --
+        JButton btnEliminar = new JButton("Eliminar");
+        btnEliminar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnEliminar.setBackground(new Color(255, 240, 240)); // Rojo muy pálido
+        btnEliminar.setForeground(new Color(200, 50, 50));
+        btnEliminar.setFocusPainted(false);
+        btnEliminar.addActionListener(e -> abrirDialogoEliminar());
+
+        JButton btnEditar = new JButton("Editar Cant.");
+        btnEditar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnEditar.setBackground(new Color(255, 250, 230)); // Amarillo muy pálido
+        btnEditar.setForeground(new Color(180, 130, 0));
+        btnEditar.setFocusPainted(false);
+        btnEditar.addActionListener(e -> editarProducto());
+
+        gbc.gridx = 0; panelControles.add(btnEliminar, gbc);
+        gbc.gridx = 1; panelControles.add(btnEditar, gbc);
+
+        // -- Separador Vertical --
+        gbc.gridx = 2; 
+        JSeparator separador = new JSeparator(JSeparator.VERTICAL);
+        separador.setPreferredSize(new Dimension(2, 40));
+        panelControles.add(separador, gbc);
+
+        // -- Grupo B: Tipo de Pago (Radio Buttons mejorados) --
+        JPanel panelRadios = new JPanel(new GridLayout(2, 1));
+        panelRadios.setOpaque(false);
+        panelRadios.setBorder(BorderFactory.createEmptyBorder(0, 5, 0, 5));
+        
+        radioContado = new JRadioButton("Contado", true);
         radioCredito = new JRadioButton("Crédito");
+        radioContado.setOpaque(false); radioContado.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        radioCredito.setOpaque(false); radioCredito.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        
         ButtonGroup grupoTipoVenta = new ButtonGroup();
         grupoTipoVenta.add(radioContado);
         grupoTipoVenta.add(radioCredito);
-        panelTipoVenta.add(radioContado);
-        panelTipoVenta.add(radioCredito);
+        
+        panelRadios.add(radioContado);
+        panelRadios.add(radioCredito);
+        
+        gbc.gridx = 3; panelControles.add(panelRadios, gbc);
 
-        JButton btnRegistrarFactura = new JButton("Registrar Factura");
-        btnRegistrarFactura.setBackground(new Color(46, 139, 87));
+        // -- Grupo C: Acciones Principales --
+        
+        // Botón de COTIZACIÓN (El nuevo que implementamos)
+        JButton btnCotizacion = new JButton("Cotizar");
+        btnCotizacion.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnCotizacion.setBackground(new Color(255, 193, 7)); // Amarillo
+        btnCotizacion.setForeground(Color.BLACK);
+        btnCotizacion.setToolTipText("Imprimir sin guardar en base de datos");
+        btnCotizacion.addActionListener(e -> generarCotizacionSinGuardar());
+
+        // Botón de COBRAR (El antiguo Registrar, ahora más grande)
+        JButton btnRegistrarFactura = new JButton("COBRAR");
+        btnRegistrarFactura.setFont(new Font("Segoe UI", Font.BOLD, 18));
+        btnRegistrarFactura.setBackground(new Color(40, 167, 69)); // Verde fuerte
         btnRegistrarFactura.setForeground(Color.WHITE);
-
-        // Posicionamiento con GridBagLayout
-        gbcInferior.gridx = 0; gbcInferior.anchor = GridBagConstraints.WEST; panelInferior.add(lblTotal, gbcInferior);
-        gbcInferior.gridx = 1; gbcInferior.weightx = 1.0; panelInferior.add(Box.createHorizontalGlue(), gbcInferior); // Espacio flexible
-        gbcInferior.gridx = 2; gbcInferior.weightx = 0; gbcInferior.anchor = GridBagConstraints.EAST; panelInferior.add(btnEliminar, gbcInferior);
-        gbcInferior.gridx = 3; panelInferior.add(btnEditar, gbcInferior);
-        gbcInferior.gridx = 4; panelInferior.add(panelTipoVenta, gbcInferior); // Añadimos el panel de radios
-        gbcInferior.gridx = 5; panelInferior.add(btnRegistrarFactura, gbcInferior);
-        btnEliminar.addActionListener(e -> abrirDialogoEliminar());
-        btnEditar.addActionListener(e -> editarProducto());
+        btnRegistrarFactura.setPreferredSize(new Dimension(160, 50)); // Botón GRANDE
         btnRegistrarFactura.addActionListener(e -> iniciarProcesoDeRegistro());
+
+        gbc.gridx = 4; panelControles.add(btnCotizacion, gbc);
+        gbc.gridx = 5; panelControles.add(btnRegistrarFactura, gbc);
+
+        // Agregar las dos grandes secciones al panel inferior
+        panelInferior.add(panelTotalContainer, BorderLayout.WEST);
+        panelInferior.add(panelControles, BorderLayout.EAST);
     
-        // --- Ensamblaje final ---
+        // --- Ensamblaje final del Panel Principal ---
         JPanel panelPrincipal = new JPanel(new BorderLayout(10, 10));
         panelPrincipal.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        panelPrincipal.setBackground(new Color(245, 245, 245)); // <-- CAMBIO DE COLOR (Fondo general)
+        panelPrincipal.setBackground(new Color(245, 245, 245)); // Fondo gris claro
         
         JPanel panelCentro = new JPanel();
         panelCentro.setLayout(new BoxLayout(panelCentro, BoxLayout.Y_AXIS));
-        panelCentro.setOpaque(false); // <-- Hace transparente el panel para ver el fondo general
+        panelCentro.setOpaque(false); 
         panelCentro.add(panelCliente);
         panelCentro.add(panelProducto);
         panelCentro.add(scroll);
@@ -1207,6 +1263,71 @@ public void cargarPedidoWeb(PedidoWeb pedido) {
     } catch (Exception e) {
         e.printStackTrace();
         JOptionPane.showMessageDialog(this, "Error al procesar el JSON del pedido: " + e.getMessage());
+    }
+}
+
+private void generarCotizacionSinGuardar() {
+    // 1. Validar que haya datos
+    if (factura == null || factura.getDetalles().isEmpty()) {
+        JOptionPane.showMessageDialog(this, "No hay productos para generar una cotización.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+
+    // 2. Confirmación visual (opcional)
+    int confirmacion = JOptionPane.showConfirmDialog(this, 
+        "Esto imprimirá el documento como 'Cotización'.\n" +
+        "NO se guardará en la base de datos, NO afectará la caja y el inventario se restaurará.\n" +
+        "¿Desea continuar?", "Generar Cotización", JOptionPane.YES_NO_OPTION);
+
+    if (confirmacion != JOptionPane.YES_OPTION) {
+        return;
+    }
+
+    try {
+        // 3. Generar el texto de la factura pero modificando el título
+        String textoOriginal = factura.generarTextoFactura();
+        
+        // Reemplazamos el título de Factura por Cotización y quitamos el número
+        // Buscamos la línea "=== FACTURA DE VENTA: [Numero] ===" y la cambiamos
+        String textoCotizacion = textoOriginal.replaceAll("=== FACTURA DE VENTA: .* ===", "=== COTIZACIÓN / PRESUPUESTO ===");
+        
+        // Opcional: Agregar una nota al final
+        textoCotizacion += "\n\n*** ESTE DOCUMENTO NO ES VÁLIDO COMO FACTURA ***\n" +
+                           "*** LOS PRECIOS ESTÁN SUJETOS A CAMBIOS ***";
+
+        // 4. Imprimir usando el método estático que ya tienes en FacturaPrinter
+        FacturaPrinter.imprimirContenido(textoCotizacion);
+
+        // 5. CRÍTICO: Restaurar el inventario
+        // Como al agregar productos en la pantalla YA se descontaron de la BD,
+        // debemos devolverlos ahora mismo.
+        for (DetalleFactura detalle : factura.getDetalles()) {
+            Producto p = detalle.getProducto();
+            double cantidadRestaurar = detalle.getCantidad();
+            
+            // Buscar el producto en la lista en memoria
+            Producto prodMemoria = listaProductos.stream()
+                .filter(prod -> prod.getCodigo().equals(p.getCodigo()))
+                .findFirst()
+                .orElse(null);
+
+            if (prodMemoria != null) {
+                // Restaurar memoria
+                double nuevoStock = prodMemoria.getCantidad() + cantidadRestaurar;
+                prodMemoria.setCantidad(nuevoStock);
+                
+                // Restaurar Base de Datos
+                ProductoStorage.actualizarStock(prodMemoria.getCodigo(), nuevoStock);
+            }
+        }
+
+        // 6. Limpiar todo como si se hubiera hecho una venta, pero sin guardar historial
+        limpiarFormulario();
+        JOptionPane.showMessageDialog(this, "Cotización impresa correctamente.", "Proceso Finalizado", JOptionPane.INFORMATION_MESSAGE);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error al generar la cotización: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
     }
 }
 
