@@ -26,6 +26,7 @@ FacturaStorage.class
 CrearProductoGUI.class
 FacturaApp.class
 GeneradorReportesGUI.class
+ProveedoresGUI$DialogoDetalleProveedor.class
 EliminarProductoFacturaGUI.class
 ClienteSeleccionListener.class
 CompromisoStorage.class
@@ -47,6 +48,7 @@ PasswordManager.class
 ConsultarFacturasGUI$EstadoFacturaRenderer.class
 MachineIdentifier.class
 ConsultarFacturasGUI$2.class
+ProveedoresGUI$2.class
 CrearProductoGUI$1.class
 DetalleFactura.class
 PathsHelper.class
@@ -100,6 +102,7 @@ ProcesarPagoGUI.class
 ConsultarDevolucionesGUI$1.class
 DevolucionesGUI.class
 TextUtil.class
+ProveedoresGUI$DialogoDetalleProveedor$1.class
 LineaStorage.class
 ConsultarOrdenesGUI$1.class
 CajaStorage.class
