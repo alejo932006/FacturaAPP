@@ -189,8 +189,12 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         lblFecha = new JLabel("Fecha: " + java.time.LocalDate.now().toString());
         lblHoraActual = new JLabel("Hora: --:--:--");
         lblNotificacionPedidos = new JLabel("");
-        lblNotificacionPedidos.setFont(new Font("Segoe UI", Font.BOLD, 14));
-        lblNotificacionPedidos.setForeground(Color.RED);
+        lblNotificacionPedidos.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblNotificacionPedidos.setOpaque(true); // Necesario para ver el fondo
+        lblNotificacionPedidos.setBackground(new Color(220, 53, 69)); // Rojo moderno
+        lblNotificacionPedidos.setForeground(Color.WHITE); // Texto blanco
+        lblNotificacionPedidos.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10)); // Relleno (Padding)
+        lblNotificacionPedidos.setVisible(false); // Oculto por defecto hasta que haya pedidos
         lblRazon = new JLabel("Razón Social:");
         lblNit = new JLabel("NIT:");
         lblTelefono = new JLabel("Teléfono:");
@@ -1427,41 +1431,73 @@ private void restaurarInventarioCancelado() {
 }
 
 private void iniciarVerificacionPedidosWeb() {
-    // Timer que se ejecuta cada 5000 milisegundos (5 segundos)
     Timer timerNotificaciones = new Timer(5000, e -> {
-        
         PedidoWebStorage storage = new PedidoWebStorage();
         int pendientesActuales = storage.contarPedidosPendientes();
         
-        // 1. Lógica Visual
+        // 1. Lógica Visual de la Etiqueta (Badge)
         if (pendientesActuales > 0) {
-            lblNotificacionPedidos.setText("🔔 " + pendientesActuales + " PEDIDO(S) WEB NUEVO(S)");
-            lblNotificacionPedidos.setForeground(Color.RED);
+            lblNotificacionPedidos.setText("🔔 " + pendientesActuales + " PEDIDO(S) WEB");
+            lblNotificacionPedidos.setVisible(true); // Mostrar etiqueta
             
-            // Efecto de parpadeo simple (cambia el color si ya estaba rojo)
-            if (lblNotificacionPedidos.getForeground() == Color.RED) {
-                lblNotificacionPedidos.setForeground(new Color(255, 100, 100));
+            // Efecto visual: Cambiar color de fondo para llamar atención suavemente
+            if (lblNotificacionPedidos.getBackground().equals(new Color(220, 53, 69))) {
+                lblNotificacionPedidos.setBackground(new Color(255, 70, 80)); // Rojo claro
             } else {
-                lblNotificacionPedidos.setForeground(Color.RED);
+                lblNotificacionPedidos.setBackground(new Color(220, 53, 69)); // Rojo estándar
             }
         } else {
-            lblNotificacionPedidos.setText("");
+            lblNotificacionPedidos.setVisible(false); // Ocultar si no hay nada
         }
 
-        // 2. Lógica de Sonido (Solo si la cantidad aumenta)
+        // 2. Notificación Flotante y Sonido (Solo si llega uno NUEVO)
         if (cantidadPedidosAnterior != -1 && pendientesActuales > cantidadPedidosAnterior) {
-            // Sonido del sistema
+            // Sonido
             java.awt.Toolkit.getDefaultToolkit().beep();
             
-            // Opcional: Mostrar un mensaje emergente pequeño que no bloquee mucho
-            // JOptionPane.showMessageDialog(this, "¡Ha llegado un nuevo pedido web!", "Nuevo Pedido", JOptionPane.INFORMATION_MESSAGE);
+            // ¡AQUÍ ESTÁ LA MAGIA! Llamamos a la notificación flotante moderna
+            mostrarNotificacionFlotante("🔔 ¡Nuevo Pedido Web Recibido!");
         }
         
-        // Actualizamos el contador para la próxima comparación
         cantidadPedidosAnterior = pendientesActuales;
     });
     
     timerNotificaciones.start();
+}
+
+private void mostrarNotificacionFlotante(String mensaje) {
+    // Usamos JWindow para que no tenga bordes ni barra de título (el "cuadro inicial")
+    JWindow toast = new JWindow();
+    
+    // Panel con diseño
+    JPanel panel = new JPanel();
+    panel.setBackground(new Color(33, 37, 41)); // Gris oscuro elegante
+    panel.setBorder(BorderFactory.createLineBorder(new Color(100, 100, 100), 1));
+    
+    JLabel label = new JLabel(mensaje);
+    label.setForeground(Color.WHITE);
+    label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+    label.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20)); // Padding interno
+    
+    panel.add(label);
+    toast.add(panel);
+    toast.pack();
+    
+    // Posición: Esquina inferior derecha de la pantalla
+    java.awt.Dimension screenSize = java.awt.Toolkit.getDefaultToolkit().getScreenSize();
+    int x = screenSize.width - toast.getWidth() - 20;
+    int y = screenSize.height - toast.getHeight() - 50; // Un poco arriba de la barra de tareas
+    toast.setLocation(x, y);
+    
+    // Mostrar y programar desaparición
+    toast.setVisible(true);
+    toast.setAlwaysOnTop(true);
+    
+    // Timer para cerrar el toast automáticamente a los 4 segundos
+    new javax.swing.Timer(4000, e -> {
+        toast.setVisible(false);
+        toast.dispose();
+    }).start();
 }
 
 }
