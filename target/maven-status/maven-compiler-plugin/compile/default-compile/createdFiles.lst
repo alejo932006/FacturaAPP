@@ -100,6 +100,7 @@ AjusteStorage.class
 ArqueoCaja.class
 ProcesarPagoGUI.class
 ConsultarDevolucionesGUI$1.class
+FacturaGUI$1.class
 DevolucionesGUI.class
 TextUtil.class
 ProveedoresGUI$DialogoDetalleProveedor$1.class

@@ -17,6 +17,7 @@ public class PedidoWebStorage {
                 PedidoWeb p = new PedidoWeb();
                 p.setId(rs.getInt("id"));
                 p.setClienteNombre(rs.getString("cliente_nombre"));
+                p.setClienteCedula(rs.getString("cliente_cedula"));
                 p.setClienteTelefono(rs.getString("cliente_telefono"));
                 p.setClienteDireccion(rs.getString("cliente_direccion"));
                 p.setMetodoPago(rs.getString("metodo_pago"));

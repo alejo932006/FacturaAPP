@@ -12,8 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import javax.swing.text.AbstractDocument;
-import org.json.JSONArray;
-import org.json.JSONObject;
+
 
 public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
 
@@ -61,8 +60,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
 
     public FacturaGUI() {
         setTitle("Sistema de Facturación");
-        // setSize(1029, 700);
-        setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
+        setSize(1500, 700);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null);
         initComponents();
@@ -70,8 +68,21 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         aplicarPermisos();
         actualizarVistaFactura(); // Dibuja el encabezado por primera vez
         aplicarPermisos(); 
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                cerrarVentana();
+            }
+        });
+        setLocationRelativeTo(null);
+        initComponents();
+        setVisible(true);
+        aplicarPermisos();
+        actualizarVistaFactura();
+        aplicarPermisos(); 
     }
-    
+
     public FacturaGUI(Frame owner) {
         this(); // Llama al constructor principal
         setLocationRelativeTo(owner);
@@ -518,11 +529,17 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         panelPrincipal.add(panelEmpresa, BorderLayout.NORTH);
         panelPrincipal.add(panelCentro, BorderLayout.CENTER);
         panelPrincipal.add(panelInferior, BorderLayout.SOUTH);
+
+        
         
         setContentPane(panelPrincipal);
     
         actualizarDatosEmpresa();
+
+
     }
+
+    
     
     public void refrescarListaProductos() {
         Object itemSeleccionado = null;
@@ -1181,153 +1198,215 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         }
     }
 
-    // Agrega este método en FacturaGUI.java
-
-public void cargarPedidoWeb(PedidoWeb pedido) {
-    // 1. Limpiar la pantalla actual para evitar mezclas
-    limpiarFormulario();
-    
-    // 2. Mapear datos del Cliente
-    // Como los pedidos web a veces no tienen cédula, usamos "222222222222" (Consumidor Final) 
-    // o "0" si no viene especificada.
-    String nombre = pedido.getClienteNombre();
-    String cedula = "222222222222"; // Valor por defecto para web
-    // Concatenamos dirección y teléfono para el campo de contacto
-    String contacto = pedido.getClienteDireccion() + " | Tel: " + pedido.getClienteTelefono();
-    String email = pedido.getClienteEmail();
-    
-    // Llenar los campos visuales
-    setDatosCliente(nombre, cedula, contacto, email);
-    
-    // 3. Inicializar el objeto Factura
-    if (factura == null) {
-        Cliente cliente = new Cliente(nombre, cedula, contacto, email);
-        String numeroFacturaStr = ConfiguracionManager.getSiguienteNumeroFactura();
-        lblNumeroFactura.setText("Factura Nº: " + numeroFacturaStr);
-        factura = new Factura(cliente, this.empresa, numeroFacturaStr);
-    }
-    
-    // 4. Procesar los productos del JSON
-    try {
-        JSONArray productos = new JSONArray(pedido.getDetalleProductos());
-        boolean faltanProductos = false;
+    public void cargarPedidoWeb(PedidoWeb pedido) {
+        // 1. Limpiar el formulario actual
+        limpiarFormulario();
         
-        for (int i = 0; i < productos.length(); i++) {
-            JSONObject item = productos.getJSONObject(i);
-            
-            // Asumimos que "id" en el JSON corresponde al CÓDIGO del producto en tu sistema
-            String codigoProducto = item.optString("id"); 
-            double cantidad = item.optDouble("qty");
-            String notaWeb = "Pedido Web #" + pedido.getId(); // Para referencia
-            
-            // Buscar el producto en la lista cargada en memoria
-            Producto productoEncontrado = listaProductos.stream()
-                .filter(p -> p.getCodigo().equalsIgnoreCase(codigoProducto))
-                .findFirst()
-                .orElse(null);
-                
-            if (productoEncontrado != null) {
-                // Verificar stock (opcional, aquí solo avisamos)
-                if (productoEncontrado.getCantidad() < cantidad) {
-                    JOptionPane.showMessageDialog(this, 
-                        "Advertencia: El producto " + productoEncontrado.getNombre() + 
-                        " tiene stock bajo (" + productoEncontrado.getCantidad() + ") para este pedido.",
-                        "Stock Insuficiente", JOptionPane.WARNING_MESSAGE);
-                }
-                
-                // Crear el detalle y agregarlo a la factura
-                DetalleFactura detalle = new DetalleFactura(productoEncontrado, cantidad, notaWeb);
-                
-                // Si quieres respetar el precio de la web, úsalo aquí:
-                // detalle.setPrecioUnitario(item.optDouble("precio")); 
-                
-                factura.agregarDetalle(detalle);
-                
-                // Actualizar visualmente el stock disponible en memoria para esta sesión
-                productoEncontrado.setCantidad(productoEncontrado.getCantidad() - cantidad);
+        // --- Cédula (Ya corregida) ---
+        String cedula = pedido.getClienteCedula();
+        if (cedula == null || cedula.trim().isEmpty()) {
+            cedula = "0"; 
+        }
+    
+        String nombre = pedido.getClienteNombre();
+        String email = pedido.getClienteEmail();
+        
+        // --- CORRECCIÓN: Concatenar Dirección y Teléfono de forma segura ---
+        String direccion = pedido.getClienteDireccion();
+        if (direccion == null) direccion = ""; // Evita "null"
+        
+        String telefono = pedido.getClienteTelefono();
+        if (telefono == null) telefono = "";   // Evita "null"
+        
+        // Construimos el texto final (ej: "Calle 10 #5-5 - Tel: 3120000000")
+        String direccionYTelefono = direccion;
+        if (!telefono.isEmpty()) {
+            if (!direccionYTelefono.isEmpty()) {
+                direccionYTelefono += " - Tel: " + telefono;
             } else {
-                faltanProductos = true;
-                System.out.println("Producto no encontrado en inventario local: " + codigoProducto);
+                direccionYTelefono = "Tel: " + telefono;
             }
         }
+    
+        // 2. Llenar los campos visuales con el dato combinado
+        // El tercer argumento es el que va al campo txtDireccion
+        setDatosCliente(nombre, cedula, direccionYTelefono, email);
         
-        if (faltanProductos) {
-            JOptionPane.showMessageDialog(this, 
-                "Algunos productos del pedido web no se encontraron en el inventario local (por código).", 
-                "Productos no cargados", JOptionPane.WARNING_MESSAGE);
+        // 3. Inicializar el objeto Factura con estos datos
+        if (factura == null) {
+            Cliente cliente = new Cliente(nombre, cedula, direccionYTelefono, email);
+            
+            String numeroFacturaStr = ConfiguracionManager.getSiguienteNumeroFactura();
+            lblNumeroFactura.setText("Factura Nº: " + numeroFacturaStr);
+            
+            factura = new Factura(cliente, this.empresa, numeroFacturaStr);
         }
         
-        // 5. Refrescar la tabla visual
-        actualizarVistaFactura();
-        
-    } catch (Exception e) {
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Error al procesar el JSON del pedido: " + e.getMessage());
+        // 4. Procesar los productos del JSON
+        try {
+            org.json.JSONArray productos = new org.json.JSONArray(pedido.getDetalleProductos());
+            boolean faltanProductos = false;
+            
+            for (int i = 0; i < productos.length(); i++) {
+                org.json.JSONObject item = productos.getJSONObject(i);
+                
+                String codigoProducto = item.optString("id"); 
+                double cantidad = item.optDouble("qty");
+                String notaWeb = ""; 
+                
+                Producto productoEncontrado = listaProductos.stream()
+                    .filter(p -> p.getCodigo().equalsIgnoreCase(codigoProducto))
+                    .findFirst()
+                    .orElse(null);
+                    
+                if (productoEncontrado != null) {
+                    if (productoEncontrado.getCantidad() < cantidad) {
+                        JOptionPane.showMessageDialog(this, 
+                            "Stock bajo para: " + productoEncontrado.getNombre(),
+                            "Advertencia", JOptionPane.WARNING_MESSAGE);
+                    }
+                    
+                    DetalleFactura detalle = new DetalleFactura(productoEncontrado, cantidad, notaWeb);
+                    factura.agregarDetalle(detalle);
+                    
+                    // Descontar inventario inmediatamente
+                    double nuevoStock = productoEncontrado.getCantidad() - cantidad;
+                    productoEncontrado.setCantidad(nuevoStock);
+                    ProductoStorage.actualizarStock(productoEncontrado.getCodigo(), nuevoStock);
+                    
+                } else {
+                    faltanProductos = true;
+                    System.out.println("Producto web no encontrado en local: " + codigoProducto);
+                }
+            }
+            
+            if (faltanProductos) {
+                JOptionPane.showMessageDialog(this, 
+                    "Algunos productos del pedido no se encontraron en el inventario local.", 
+                    "Advertencia", JOptionPane.WARNING_MESSAGE);
+            }
+            
+            actualizarVistaFactura();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error procesando JSON: " + e.getMessage());
+        }
+    }
+
+    private void generarCotizacionSinGuardar() {
+        // 1. Validar que haya datos
+        if (factura == null || factura.getDetalles().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No hay productos para generar una cotización.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 2. Confirmación visual (opcional)
+        int confirmacion = JOptionPane.showConfirmDialog(this, 
+            "Esto imprimirá el documento como 'Cotización'.\n" +
+            "NO se guardará en la base de datos, NO afectará la caja y el inventario se restaurará.\n" +
+            "¿Desea continuar?", "Generar Cotización", JOptionPane.YES_NO_OPTION);
+
+        if (confirmacion != JOptionPane.YES_OPTION) {
+            return;
+        }
+
+        try {
+            // 3. Generar el texto de la factura pero modificando el título
+            String textoOriginal = factura.generarTextoFactura();
+            
+            // Reemplazamos el título de Factura por Cotización y quitamos el número
+            // Buscamos la línea "=== FACTURA DE VENTA: [Numero] ===" y la cambiamos
+            String textoCotizacion = textoOriginal.replaceAll("=== FACTURA DE VENTA: .* ===", "=== COTIZACIÓN / PRESUPUESTO ===");
+            
+            // Opcional: Agregar una nota al final
+            textoCotizacion += "\n\n*** ESTE DOCUMENTO NO ES VÁLIDO COMO FACTURA ***\n" +
+                            "*** LOS PRECIOS ESTÁN SUJETOS A CAMBIOS ***";
+
+            // 4. Imprimir usando el método estático que ya tienes en FacturaPrinter
+            FacturaPrinter.imprimirContenido(textoCotizacion);
+
+            // 5. CRÍTICO: Restaurar el inventario
+            // Como al agregar productos en la pantalla YA se descontaron de la BD,
+            // debemos devolverlos ahora mismo.
+            for (DetalleFactura detalle : factura.getDetalles()) {
+                Producto p = detalle.getProducto();
+                double cantidadRestaurar = detalle.getCantidad();
+                
+                // Buscar el producto en la lista en memoria
+                Producto prodMemoria = listaProductos.stream()
+                    .filter(prod -> prod.getCodigo().equals(p.getCodigo()))
+                    .findFirst()
+                    .orElse(null);
+
+                if (prodMemoria != null) {
+                    // Restaurar memoria
+                    double nuevoStock = prodMemoria.getCantidad() + cantidadRestaurar;
+                    prodMemoria.setCantidad(nuevoStock);
+                    
+                    // Restaurar Base de Datos
+                    ProductoStorage.actualizarStock(prodMemoria.getCodigo(), nuevoStock);
+                }
+            }
+
+            // 6. Limpiar todo como si se hubiera hecho una venta, pero sin guardar historial
+            limpiarFormulario();
+            JOptionPane.showMessageDialog(this, "Cotización impresa correctamente.", "Proceso Finalizado", JOptionPane.INFORMATION_MESSAGE);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error al generar la cotización: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // Agrega estos métodos al final de la clase FacturaGUI
+
+private void cerrarVentana() {
+    // Verificamos si hay una factura activa y si tiene productos
+    if (factura != null && !factura.getDetalles().isEmpty()) {
+        int confirm = JOptionPane.showConfirmDialog(this, 
+            "Hay productos cargados en la factura. \nSi sale ahora, se cancelará el proceso y se devolverán los productos al inventario.\n¿Está seguro de salir?", 
+            "Confirmar Cierre", 
+            JOptionPane.YES_NO_OPTION, 
+            JOptionPane.WARNING_MESSAGE);
+            
+        if (confirm == JOptionPane.YES_OPTION) {
+            // Si el usuario confirma, devolvemos el stock y cerramos
+            restaurarInventarioCancelado();
+            dispose();
+        }
+        // Si dice NO, no hacemos nada y la ventana sigue abierta
+    } else {
+        // Si no hay productos cargados, cerramos directamente
+        dispose();
     }
 }
 
-private void generarCotizacionSinGuardar() {
-    // 1. Validar que haya datos
-    if (factura == null || factura.getDetalles().isEmpty()) {
-        JOptionPane.showMessageDialog(this, "No hay productos para generar una cotización.", "Tabla Vacía", JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-
-    // 2. Confirmación visual (opcional)
-    int confirmacion = JOptionPane.showConfirmDialog(this, 
-        "Esto imprimirá el documento como 'Cotización'.\n" +
-        "NO se guardará en la base de datos, NO afectará la caja y el inventario se restaurará.\n" +
-        "¿Desea continuar?", "Generar Cotización", JOptionPane.YES_NO_OPTION);
-
-    if (confirmacion != JOptionPane.YES_OPTION) {
-        return;
-    }
-
+private void restaurarInventarioCancelado() {
     try {
-        // 3. Generar el texto de la factura pero modificando el título
-        String textoOriginal = factura.generarTextoFactura();
-        
-        // Reemplazamos el título de Factura por Cotización y quitamos el número
-        // Buscamos la línea "=== FACTURA DE VENTA: [Numero] ===" y la cambiamos
-        String textoCotizacion = textoOriginal.replaceAll("=== FACTURA DE VENTA: .* ===", "=== COTIZACIÓN / PRESUPUESTO ===");
-        
-        // Opcional: Agregar una nota al final
-        textoCotizacion += "\n\n*** ESTE DOCUMENTO NO ES VÁLIDO COMO FACTURA ***\n" +
-                           "*** LOS PRECIOS ESTÁN SUJETOS A CAMBIOS ***";
-
-        // 4. Imprimir usando el método estático que ya tienes en FacturaPrinter
-        FacturaPrinter.imprimirContenido(textoCotizacion);
-
-        // 5. CRÍTICO: Restaurar el inventario
-        // Como al agregar productos en la pantalla YA se descontaron de la BD,
-        // debemos devolverlos ahora mismo.
+        System.out.println("Restaurando inventario por cancelación de factura...");
         for (DetalleFactura detalle : factura.getDetalles()) {
-            Producto p = detalle.getProducto();
-            double cantidadRestaurar = detalle.getCantidad();
+            Producto productoDelDetalle = detalle.getProducto();
+            double cantidadADevolver = detalle.getCantidad();
             
-            // Buscar el producto en la lista en memoria
-            Producto prodMemoria = listaProductos.stream()
-                .filter(prod -> prod.getCodigo().equals(p.getCodigo()))
-                .findFirst()
-                .orElse(null);
+            // 1. Buscamos el producto en la lista local para asegurar la referencia
+            Producto productoEnMemoria = listaProductos.stream()
+                    .filter(p -> p.getCodigo().equals(productoDelDetalle.getCodigo()))
+                    .findFirst()
+                    .orElse(productoDelDetalle);
 
-            if (prodMemoria != null) {
-                // Restaurar memoria
-                double nuevoStock = prodMemoria.getCantidad() + cantidadRestaurar;
-                prodMemoria.setCantidad(nuevoStock);
-                
-                // Restaurar Base de Datos
-                ProductoStorage.actualizarStock(prodMemoria.getCodigo(), nuevoStock);
-            }
+            // 2. Calculamos el nuevo stock (Stock actual + Cantidad que íbamos a vender)
+            double nuevoStock = productoEnMemoria.getCantidad() + cantidadADevolver;
+            
+            // 3. Actualizamos Memoria
+            productoEnMemoria.setCantidad(nuevoStock);
+            
+            // 4. Actualizamos Base de Datos
+            ProductoStorage.actualizarStock(productoEnMemoria.getCodigo(), nuevoStock);
         }
-
-        // 6. Limpiar todo como si se hubiera hecho una venta, pero sin guardar historial
-        limpiarFormulario();
-        JOptionPane.showMessageDialog(this, "Cotización impresa correctamente.", "Proceso Finalizado", JOptionPane.INFORMATION_MESSAGE);
-
     } catch (Exception e) {
         e.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Error al generar la cotización: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        JOptionPane.showMessageDialog(this, "Error al restaurar el inventario: " + e.getMessage());
     }
 }
 

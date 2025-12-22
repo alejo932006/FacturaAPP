@@ -11,6 +11,7 @@ public class PedidoWeb {
     private Timestamp fechaPedido;
     private String estado;
     private String clienteEmail;
+    private String clienteCedula;
 
     // Constructor vacío
     public PedidoWeb() {}
@@ -45,4 +46,7 @@ public class PedidoWeb {
     
     public String getClienteEmail() { return clienteEmail; }
     public void setClienteEmail(String clienteEmail) { this.clienteEmail = clienteEmail; }
+
+    public String getClienteCedula() { return clienteCedula; }
+    public void setClienteCedula(String clienteCedula) { this.clienteCedula = clienteCedula; }
 }
