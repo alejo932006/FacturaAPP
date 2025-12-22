@@ -29,6 +29,8 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
     private double descuentoParaSiguienteProducto = 0.0;
     private JRadioButton radioContado, radioCredito;
     private JButton btnAplicarDescuento;
+    private JLabel lblNotificacionPedidos;
+    private int cantidadPedidosAnterior = -1;
     private final NumberFormat formatoPesos = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-CO"));
     JMenuBar barraMenu = new JMenuBar();
         JMenu menuOpciones = new JMenu("Opciones");
@@ -80,7 +82,8 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         setVisible(true);
         aplicarPermisos();
         actualizarVistaFactura();
-        aplicarPermisos(); 
+        aplicarPermisos();
+        iniciarVerificacionPedidosWeb(); 
     }
 
     public FacturaGUI(Frame owner) {
@@ -185,6 +188,9 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
     
         lblFecha = new JLabel("Fecha: " + java.time.LocalDate.now().toString());
         lblHoraActual = new JLabel("Hora: --:--:--");
+        lblNotificacionPedidos = new JLabel("");
+        lblNotificacionPedidos.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        lblNotificacionPedidos.setForeground(Color.RED);
         lblRazon = new JLabel("Razón Social:");
         lblNit = new JLabel("NIT:");
         lblTelefono = new JLabel("Teléfono:");
@@ -198,6 +204,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         panelEmpresa.add(lblFecha);
         panelEmpresa.add(lblHoraActual);
         panelEmpresa.add(lblNumeroFactura);
+        panelEmpresa.add(lblNotificacionPedidos);
         Timer timer = new Timer(1000, e -> lblHoraActual.setText("Hora: " + java.time.LocalTime.now().withNano(0).toString()));
         timer.start();
     
@@ -1202,23 +1209,28 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         // 1. Limpiar el formulario actual
         limpiarFormulario();
         
-        // --- Cédula (Ya corregida) ---
+        // --- Cédula ---
         String cedula = pedido.getClienteCedula();
         if (cedula == null || cedula.trim().isEmpty()) {
             cedula = "0"; 
         }
     
+        // --- Nombre (Limpiamos el carácter prohibido #) ---
         String nombre = pedido.getClienteNombre();
+        if (nombre != null) {
+            nombre = nombre.replace("#", "No."); // Reemplazo de seguridad
+        }
+
         String email = pedido.getClienteEmail();
         
-        // --- CORRECCIÓN: Concatenar Dirección y Teléfono de forma segura ---
+        // --- Dirección y Teléfono (Limpiamos el carácter prohibido #) ---
         String direccion = pedido.getClienteDireccion();
-        if (direccion == null) direccion = ""; // Evita "null"
+        if (direccion == null) direccion = "";
         
         String telefono = pedido.getClienteTelefono();
-        if (telefono == null) telefono = "";   // Evita "null"
+        if (telefono == null) telefono = "";
         
-        // Construimos el texto final (ej: "Calle 10 #5-5 - Tel: 3120000000")
+        // Construimos el texto combinado
         String direccionYTelefono = direccion;
         if (!telefono.isEmpty()) {
             if (!direccionYTelefono.isEmpty()) {
@@ -1227,9 +1239,13 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                 direccionYTelefono = "Tel: " + telefono;
             }
         }
+        
+        // ¡IMPORTANTE! Aquí reemplazamos el # por "No." para que el filtro deje pasar el texto
+        if (direccionYTelefono != null) {
+            direccionYTelefono = direccionYTelefono.replace("#", "No.");
+        }
     
-        // 2. Llenar los campos visuales con el dato combinado
-        // El tercer argumento es el que va al campo txtDireccion
+        // 2. Llenar los campos visuales (Ahora sí entrará el texto porque no tiene #)
         setDatosCliente(nombre, cedula, direccionYTelefono, email);
         
         // 3. Inicializar el objeto Factura con estos datos
@@ -1260,6 +1276,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                     .orElse(null);
                     
                 if (productoEncontrado != null) {
+                    // Verificar Stock
                     if (productoEncontrado.getCantidad() < cantidad) {
                         JOptionPane.showMessageDialog(this, 
                             "Stock bajo para: " + productoEncontrado.getNombre(),
@@ -1276,7 +1293,6 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                     
                 } else {
                     faltanProductos = true;
-                    System.out.println("Producto web no encontrado en local: " + codigoProducto);
                 }
             }
             
@@ -1408,6 +1424,44 @@ private void restaurarInventarioCancelado() {
         e.printStackTrace();
         JOptionPane.showMessageDialog(this, "Error al restaurar el inventario: " + e.getMessage());
     }
+}
+
+private void iniciarVerificacionPedidosWeb() {
+    // Timer que se ejecuta cada 5000 milisegundos (5 segundos)
+    Timer timerNotificaciones = new Timer(5000, e -> {
+        
+        PedidoWebStorage storage = new PedidoWebStorage();
+        int pendientesActuales = storage.contarPedidosPendientes();
+        
+        // 1. Lógica Visual
+        if (pendientesActuales > 0) {
+            lblNotificacionPedidos.setText("🔔 " + pendientesActuales + " PEDIDO(S) WEB NUEVO(S)");
+            lblNotificacionPedidos.setForeground(Color.RED);
+            
+            // Efecto de parpadeo simple (cambia el color si ya estaba rojo)
+            if (lblNotificacionPedidos.getForeground() == Color.RED) {
+                lblNotificacionPedidos.setForeground(new Color(255, 100, 100));
+            } else {
+                lblNotificacionPedidos.setForeground(Color.RED);
+            }
+        } else {
+            lblNotificacionPedidos.setText("");
+        }
+
+        // 2. Lógica de Sonido (Solo si la cantidad aumenta)
+        if (cantidadPedidosAnterior != -1 && pendientesActuales > cantidadPedidosAnterior) {
+            // Sonido del sistema
+            java.awt.Toolkit.getDefaultToolkit().beep();
+            
+            // Opcional: Mostrar un mensaje emergente pequeño que no bloquee mucho
+            // JOptionPane.showMessageDialog(this, "¡Ha llegado un nuevo pedido web!", "Nuevo Pedido", JOptionPane.INFORMATION_MESSAGE);
+        }
+        
+        // Actualizamos el contador para la próxima comparación
+        cantidadPedidosAnterior = pendientesActuales;
+    });
+    
+    timerNotificaciones.start();
 }
 
 }

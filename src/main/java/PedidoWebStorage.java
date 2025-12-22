@@ -59,4 +59,18 @@ public class PedidoWebStorage {
             return false;
         }
     }
+
+    public int contarPedidosPendientes() {
+        String sql = "SELECT COUNT(*) FROM pedidos WHERE estado = 'Pendiente'";
+        try (Connection conn = ConexionDB.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }
