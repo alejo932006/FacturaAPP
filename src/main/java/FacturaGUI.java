@@ -132,6 +132,10 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         menuOpciones.add(itemProveedores);
 
         menuOpciones.addSeparator();
+
+        JMenuItem itemPedidosWeb = new JMenuItem("Gestionar Pedidos Web");
+        itemPedidosWeb.addActionListener(e -> new PedidosWebGUI().setVisible(true)); 
+        menuOpciones.add(itemPedidosWeb);
     
         itemDevoluciones = new JMenuItem("Registrar Devolución");
         itemDevoluciones.addActionListener(e -> new DevolucionesGUI(this).setVisible(true));
