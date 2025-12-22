@@ -78,7 +78,6 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
             }
         });
         setLocationRelativeTo(null);
-        initComponents();
         setVisible(true);
         aplicarPermisos();
         actualizarVistaFactura();
@@ -1321,7 +1320,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
             return;
         }
 
-        // 2. Confirmación visual (opcional)
+        // 2. Confirmación
         int confirmacion = JOptionPane.showConfirmDialog(this, 
             "Esto imprimirá el documento como 'Cotización'.\n" +
             "NO se guardará en la base de datos, NO afectará la caja y el inventario se restaurará.\n" +
@@ -1332,44 +1331,80 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         }
 
         try {
-            // 3. Generar el texto de la factura pero modificando el título
+            // 3. Generar el texto crudo (que incluye los metadatos ocultos con el costo)
             String textoOriginal = factura.generarTextoFactura();
             
-            // Reemplazamos el título de Factura por Cotización y quitamos el número
-            // Buscamos la línea "=== FACTURA DE VENTA: [Numero] ===" y la cambiamos
-            String textoCotizacion = textoOriginal.replaceAll("=== FACTURA DE VENTA: .* ===", "=== COTIZACIÓN / PRESUPUESTO ===");
+            // A. Cambiar título
+            String textoConTitulo = textoOriginal.replaceAll("=== FACTURA DE VENTA: .* ===", "=== COTIZACIÓN / PRESUPUESTO ===");
             
-            // Opcional: Agregar una nota al final
-            textoCotizacion += "\n\n*** ESTE DOCUMENTO NO ES VÁLIDO COMO FACTURA ***\n" +
-                            "*** LOS PRECIOS ESTÁN SUJETOS A CAMBIOS ***";
+            // B. PROCESAR LÍNEAS PARA LIMPIAR COSTOS Y DAR FORMATO
+            StringBuilder textoFinal = new StringBuilder();
+            String[] lineas = textoConTitulo.split("\n");
+            
+            // Necesitamos el formateador para replicar la visualización bonita
+            NumberFormat formatoMoneda = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-CO"));
+            formatoMoneda.setMaximumFractionDigits(0);
 
-            // 4. Imprimir usando el método estático que ya tienes en FacturaPrinter
-            FacturaPrinter.imprimirContenido(textoCotizacion);
+            for (String linea : lineas) {
+                if (linea.contains("#venta_u:")) {
+                    try {
+                        // --- LÓGICA DE LIMPIEZA Y FORMATO ---
+                        String parteVisible = linea.split("#")[0].trim();
+                        String parteDatos = linea.split("#")[1];
 
-            // 5. CRÍTICO: Restaurar el inventario
-            // Como al agregar productos en la pantalla YA se descontaron de la BD,
-            // debemos devolverlos ahora mismo.
+                        int indiceIgual = parteVisible.lastIndexOf(" = ");
+                        int indiceUltimaX = parteVisible.lastIndexOf(" x ", indiceIgual);
+                        
+                        String nombreProducto = parteVisible.substring(parteVisible.indexOf(']') + 1, indiceUltimaX).trim();
+                        String cantidadFormateada = parteVisible.substring(indiceUltimaX + 3, indiceIgual).trim();
+                        String subtotalStr = parteVisible.split(" = ")[1].trim();
+                        
+                        // Extraemos solo el precio de venta para mostrarlo, ignorando el costo
+                        double precioVentaUnitario = 0.0;
+                        try {
+                            precioVentaUnitario = Double.parseDouble(parteDatos.split(";")[0].split(":")[1]);
+                        } catch (Exception e) {}
+
+                        // Reconstruimos la visualización limpia (igual que en imprimirFactura)
+                        textoFinal.append(String.format("%s x %s\n", cantidadFormateada, nombreProducto));
+                        textoFinal.append(String.format("  %-20s %10s\n", "Precio Unitario:", formatoMoneda.format(precioVentaUnitario)));
+                        textoFinal.append(String.format("  %-20s %10s\n", "Subtotal:", subtotalStr));
+                        
+                    } catch (Exception e) {
+                        // Si falla algo en el formato avanzado, al menos quitamos lo que está después del #
+                        textoFinal.append(linea.split("#")[0].trim()).append("\n");
+                    }
+                } else {
+                    // Si no es una línea de producto con metadatos, la dejamos igual
+                    textoFinal.append(linea).append("\n");
+                }
+            }
+
+            // Agregamos nota legal
+            textoFinal.append("\n\n*** ESTE DOCUMENTO NO ES VÁLIDO COMO FACTURA ***\n" +
+                            "*** LOS PRECIOS ESTÁN SUJETOS A CAMBIOS ***");
+
+            // 4. Imprimir el texto YA LIMPIO
+            FacturaPrinter.imprimirContenido(textoFinal.toString());
+
+            // 5. Restaurar el inventario (porque al agregar a la tabla se descontó de BD)
             for (DetalleFactura detalle : factura.getDetalles()) {
                 Producto p = detalle.getProducto();
                 double cantidadRestaurar = detalle.getCantidad();
                 
-                // Buscar el producto en la lista en memoria
                 Producto prodMemoria = listaProductos.stream()
                     .filter(prod -> prod.getCodigo().equals(p.getCodigo()))
                     .findFirst()
                     .orElse(null);
 
                 if (prodMemoria != null) {
-                    // Restaurar memoria
                     double nuevoStock = prodMemoria.getCantidad() + cantidadRestaurar;
                     prodMemoria.setCantidad(nuevoStock);
-                    
-                    // Restaurar Base de Datos
                     ProductoStorage.actualizarStock(prodMemoria.getCodigo(), nuevoStock);
                 }
             }
 
-            // 6. Limpiar todo como si se hubiera hecho una venta, pero sin guardar historial
+            // 6. Limpiar todo
             limpiarFormulario();
             JOptionPane.showMessageDialog(this, "Cotización impresa correctamente.", "Proceso Finalizado", JOptionPane.INFORMATION_MESSAGE);
 
