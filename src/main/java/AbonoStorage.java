@@ -55,4 +55,20 @@ public class AbonoStorage {
         }
         return abonos;
     }
+
+    public static void eliminarAbonosPorCompromiso(String compromisoId) {
+        String sql = "DELETE FROM abonos_compromisos WHERE compromiso_id = ?";
+
+        try (Connection conn = ConexionDB.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, Integer.parseInt(compromisoId));
+            pstmt.executeUpdate();
+            // No mostramos mensaje aquí para que sea transparente al usuario
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.err.println("Error al eliminar abonos del compromiso " + compromisoId + ": " + e.getMessage());
+        }
+    }
 }

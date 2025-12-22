@@ -148,16 +148,26 @@ public class CompromisoStorage {
     // En CompromisoStorage.java
 
     public static void eliminarCompromiso(String id) {
+        // Validación de ID
+        if (!esIdNumerico(id)) return;
+
+        // 1. PRIMERO: Eliminamos los abonos hijos para evitar error de Foreign Key
+        // (Esto no afectará a los pagos periódicos si no tienen registros en la tabla abonos)
+        AbonoStorage.eliminarAbonosPorCompromiso(id);
+
+        // 2. SEGUNDO: Eliminamos el compromiso padre
         String sql = "DELETE FROM compromisos WHERE id = ?";
 
         try (Connection conn = ConexionDB.conectar();
-            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setInt(1, Integer.parseInt(id));
             int filasAfectadas = pstmt.executeUpdate();
 
             if (filasAfectadas > 0) {
                 JOptionPane.showMessageDialog(null, "Compromiso eliminado correctamente.");
+            } else {
+                JOptionPane.showMessageDialog(null, "No se pudo eliminar el compromiso.");
             }
 
         } catch (SQLException e) {
