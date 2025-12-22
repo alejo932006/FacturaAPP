@@ -144,4 +144,25 @@ public class CompromisoStorage {
             return false;
         }
     }
+
+    // En CompromisoStorage.java
+
+    public static void eliminarCompromiso(String id) {
+        String sql = "DELETE FROM compromisos WHERE id = ?";
+
+        try (Connection conn = ConexionDB.conectar();
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setInt(1, Integer.parseInt(id));
+            int filasAfectadas = pstmt.executeUpdate();
+
+            if (filasAfectadas > 0) {
+                JOptionPane.showMessageDialog(null, "Compromiso eliminado correctamente.");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error al eliminar el compromiso: " + e.getMessage());
+        }
+    }
 }

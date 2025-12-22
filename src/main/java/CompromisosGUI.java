@@ -429,13 +429,21 @@ public class CompromisosGUI extends JDialog {
             JOptionPane.showMessageDialog(this, "Seleccione un compromiso de la lista.", "Aviso", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        int resp = JOptionPane.showConfirmDialog(this, "¿Está seguro de que desea eliminar este compromiso y todos sus abonos asociados?", "Confirmar", JOptionPane.YES_NO_OPTION);
-        if (resp == JOptionPane.YES_OPTION) {
-            // Eliminar abonos asociados (Necesita un método en AbonoStorage)
-            // AbonoStorage.eliminarAbonosPorCompromiso(compromisoSeleccionado.getId());
+        
+        int resp = JOptionPane.showConfirmDialog(this, 
+            "¿Está seguro de que desea eliminar este compromiso?", 
+            "Confirmar", JOptionPane.YES_NO_OPTION);
             
-            listaCompromisos.remove(compromisoSeleccionado);
-            CompromisoStorage.guardarTodosLosCompromisos(listaCompromisos);
+        if (resp == JOptionPane.YES_OPTION) {
+            // --- CORRECCIÓN AQUÍ ---
+            
+            // 1. (Opcional) Primero deberías eliminar los abonos asociados si no tienes borrado en cascada en la BD
+            // AbonoStorage.eliminarAbonosPorCompromiso(compromisoSeleccionado.getId());
+    
+            // 2. Llamar al nuevo método que borra DIRECTAMENTE en la base de datos
+            CompromisoStorage.eliminarCompromiso(compromisoSeleccionado.getId());
+            
+            // 3. Recargar la tabla desde la base de datos actualizada
             cargarYMostrarCompromisos();
             limpiarFormulario();
         }
