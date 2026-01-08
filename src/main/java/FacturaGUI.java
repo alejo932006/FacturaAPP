@@ -13,6 +13,8 @@ import java.util.Locale;
 import java.util.Optional;
 import javax.swing.text.AbstractDocument;
 
+import java.net.URI;
+
 
 public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
 
@@ -514,7 +516,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         btnCotizacion.addActionListener(e -> generarCotizacionSinGuardar());
 
         // Botón de COBRAR (El antiguo Registrar, ahora más grande)
-        JButton btnRegistrarFactura = new JButton("COBRAR");
+        JButton btnRegistrarFactura = new JButton("FACTURAR");
         btnRegistrarFactura.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btnRegistrarFactura.setBackground(new Color(40, 167, 69)); // Verde fuerte
         btnRegistrarFactura.setForeground(Color.WHITE);
@@ -544,6 +546,30 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         panelPrincipal.add(panelCentro, BorderLayout.CENTER);
         panelPrincipal.add(panelInferior, BorderLayout.SOUTH);
 
+        JButton btnElectronica = new JButton("F. Electrónica");
+        btnElectronica.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btnElectronica.setBackground(new Color(0, 123, 255)); // Azul Dataico/Moderno
+        btnElectronica.setForeground(Color.WHITE);
+        btnElectronica.setToolTipText("Guardar localmente y abrir Dataico para facturar electrónicamente");
+        
+        btnElectronica.addActionListener(e -> {
+            // 1. Intentamos registrar la factura normal (Local)
+            boolean registrada = iniciarProcesoDeRegistro();
+            
+            // 2. Si se registró correctamente, abrimos el link
+            if (registrada) {
+                abrirPlataformaDataico();
+            }
+        });
+
+        // Ajustamos la posición en el GridBagLayout
+        // Cotizar estaba en x=4, COBRAR en x=5. Pondremos este nuevo en x=6
+        gbc.gridx = 4; panelControles.add(btnCotizacion, gbc);
+        gbc.gridx = 5; panelControles.add(btnRegistrarFactura, gbc);
+        
+        // Añadimos un pequeño espacio
+        gbc.insets = new Insets(0, 10, 0, 5); 
+        gbc.gridx = 6; panelControles.add(btnElectronica, gbc);
         
         
         setContentPane(panelPrincipal);
@@ -853,11 +879,13 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
     }
     
 
-    private void iniciarProcesoDeRegistro() {
+    private boolean iniciarProcesoDeRegistro() {
         if (factura == null || factura.getDetalles().isEmpty()) {
             JOptionPane.showMessageDialog(this, "No hay productos en la factura para registrar.", "Advertencia", JOptionPane.WARNING_MESSAGE);
-            return;
+            return false; // Falló
         }
+    
+        boolean exito = false;
     
         if (radioContado.isSelected()) {
             double total = factura.calcularTotal();
@@ -865,15 +893,12 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
             dialogoPago.setVisible(true);
             
             if (dialogoPago.isPagoConfirmado()) {
-                // Establecemos los datos de pago
                 factura.setMetodoPago(dialogoPago.getMetodoPagoSeleccionado());
                 double saldoUsado = dialogoPago.getSaldoAFavorAplicado();
             
-                // --- PASO 1: GUARDAR EN BASE DE DATOS LOCAL ---
                 boolean guardadoExitoso = FacturaStorage.guardarFacturaCompleta(factura);
     
                 if (guardadoExitoso) {
-                    // --- PASO 2: MOVER DINERO (CAJA/BANCO) ---
                     if ("Efectivo".equals(factura.getMetodoPago())) {
                         CuentasStorage.agregarACaja(factura.calcularTotal() - saldoUsado);
                     } else {
@@ -883,23 +908,25 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                     if (saldoUsado > 0) {
                         marcarCreditosComoUsados(factura.getCliente().getCedula(), saldoUsado);
                     }
-                    // --- PASO 3: GENERAR RESPALDO TXT E IMPRIMIR ---
-                    File archivoGuardado = registrarFacturaEnArchivo(); // Mantenemos el TXT como respaldo
+                    
+                    File archivoGuardado = registrarFacturaEnArchivo();
                     
                     int respuesta = JOptionPane.showConfirmDialog(this, "Factura registrada en Base de Datos. ¿Desea imprimirla?", "Éxito", JOptionPane.YES_NO_OPTION);
                     if (respuesta == JOptionPane.YES_OPTION) {
                         imprimirFactura(archivoGuardado);
                     }
                     limpiarFormulario();
+                    exito = true; // Éxito
                 }
             }
         } else {
-            // Nota: Deberías aplicar una lógica similar dentro de este método si también quieres facturar a crédito electrónicamente
-            registrarFacturaACredito();
+            // Llamamos al método de crédito y capturamos su resultado
+            exito = registrarFacturaACredito();
         }
+        return exito;
     }
 
-    private void registrarFacturaACredito() {
+    private boolean registrarFacturaACredito() {
         int confirmacion = JOptionPane.showConfirmDialog(this,
             "¿Registrar venta a CRÉDITO en la Base de Datos?",
             "Confirmar Crédito", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
@@ -907,11 +934,9 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         if (confirmacion == JOptionPane.YES_OPTION) {
             factura.setMetodoPago("Crédito");
     
-            // --- PASO 1: GUARDAR EN BASE DE DATOS LOCAL ---
             boolean guardadoExitoso = FacturaStorage.guardarFacturaCompleta(factura);
     
             if (guardadoExitoso) {
-                // --- PASO 2: GENERAR DOCUMENTOS LOCALES ---
                 File archivoFactura = registrarFacturaEnArchivo();
                 GeneradorReportesGUI.generarReciboCreditoAutomatico(factura);
     
@@ -922,8 +947,10 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                 }
     
                 limpiarFormulario();
+                return true; // Éxito
             }
         }
+        return false; // Cancelado o falló
     }
 
     // Copia y pega este método. Este es el ajuste final.
@@ -1537,6 +1564,24 @@ private void mostrarNotificacionFlotante(String mensaje) {
         toast.setVisible(false);
         toast.dispose();
     }).start();
+}
+
+private void abrirPlataformaDataico() {
+    try {
+        // Enlace proporcionado
+        String urlDataico = "https://app.dataico.com/empresa/ventas/facturas?_rp_=WyJeICIsIn46bnVtYmVyaW5nIixudWxsLCJ%2BOnN0YXJ0LWRhdGUiLCJ%2BbTE3NjQ4MTMwMDMxNTIiLCJ%2BOmVuZC1kYXRlIiwifm0xNzY3NDE2NDAwMDAwIiwifjpzb3J0LXR5cGUiLCJ%2BOm51bWJlciJd&";
+        
+        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            Desktop.getDesktop().browse(new URI(urlDataico));
+        } else {
+            JOptionPane.showMessageDialog(this, 
+                "No se pudo abrir el navegador automáticamente.\nPor favor vaya a: " + urlDataico, 
+                "Navegador no soportado", JOptionPane.WARNING_MESSAGE);
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Error al intentar abrir el enlace: " + e.getMessage());
+    }
 }
 
 }
