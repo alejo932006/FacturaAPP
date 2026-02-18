@@ -358,10 +358,20 @@ public class PedidosWebGUI extends JFrame {
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
             Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             if (isSelected) return c;
+            
             String estado = (String) table.getModel().getValueAt(table.convertRowIndexToModel(row), 1);
-            if ("DESPACHADO".equalsIgnoreCase(estado)) c.setBackground(new Color(212, 237, 218));
-            else if ("CANCELADO".equalsIgnoreCase(estado)) c.setBackground(new Color(248, 215, 218));
-            else c.setBackground(Color.WHITE);
+            
+            // Colores según el nuevo flujo de estados
+            if ("DESPACHADO".equalsIgnoreCase(estado) || "PAGADO_EPAYCO".equalsIgnoreCase(estado) || "PAGADO".equalsIgnoreCase(estado)) {
+                c.setBackground(new Color(212, 237, 218)); // Verde (Listo para enviar o ya enviado)
+            } else if ("CANCELADO".equalsIgnoreCase(estado)) {
+                c.setBackground(new Color(248, 215, 218)); // Rojo
+            } else if ("PENDIENTE_PAGO".equalsIgnoreCase(estado) || "PENDIENTE".equalsIgnoreCase(estado)) {
+                c.setBackground(new Color(255, 243, 205)); // Amarillo (Esperando confirmación)
+            } else {
+                c.setBackground(Color.WHITE);
+            }
+            
             c.setForeground(Color.BLACK);
             return c;
         }

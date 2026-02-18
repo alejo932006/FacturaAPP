@@ -62,8 +62,7 @@ public class PedidoWebStorage {
 
     public int contarPedidosPendientes() {
         // CORRECCIÓN: Usamos UPPER() para ignorar si está en mayúscula o minúscula
-        String sql = "SELECT COUNT(*) FROM pedidos WHERE UPPER(estado) = 'PENDIENTE'";
-        
+        String sql = "SELECT COUNT(*) FROM pedidos WHERE UPPER(estado) IN ('PENDIENTE', 'PENDIENTE_PAGO', 'PAGADO_EPAYCO', 'PAGADO')";        
         try (Connection conn = ConexionDB.conectar();
              PreparedStatement pstmt = conn.prepareStatement(sql);
              ResultSet rs = pstmt.executeQuery()) {

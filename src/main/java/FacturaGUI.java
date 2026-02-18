@@ -85,12 +85,18 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         actualizarVistaFactura();
         aplicarPermisos();
         iniciarVerificacionPedidosWeb(); 
+        if (!ClienteStorage.clienteExiste("0")) {
+            Cliente ocasional = new Cliente("Cliente Ocasional", "0", "Local", "NA");
+            ClienteStorage.guardarCliente(ocasional);
+        }
     }
 
     public FacturaGUI(Frame owner) {
         this(); // Llama al constructor principal
         setLocationRelativeTo(owner);
     }
+
+
 
     private void initComponents() {
 

@@ -82,7 +82,7 @@ public class ClienteStorage {
 
     // --- VERIFICAR EXISTENCIA (SELECT COUNT) ---
     public static boolean clienteExiste(String cedula) {
-        if (cedula == null || cedula.trim().isEmpty() || cedula.trim().equals("0")) {
+        if (cedula == null || cedula.trim().isEmpty()) { 
             return false;
         }
 
