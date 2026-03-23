@@ -6,28 +6,30 @@ import javax.swing.JOptionPane;
 public class ClienteStorage {
     
     // --- GUARDAR CLIENTE (INSERT) ---
-    public static void guardarCliente(Cliente cliente) {
-        // CORRECCIÓN: Se agrega el campo 'email' a la consulta SQL
+    // Cambiamos 'void' por 'boolean'
+    public static boolean guardarCliente(Cliente cliente) {
         String sql = "INSERT INTO clientes (cedula, nombre, direccion, email) VALUES (?, ?, ?, ?)";
 
         try (Connection conn = ConexionDB.conectar();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
             pstmt.setString(1, cliente.getCedula());
             pstmt.setString(2, cliente.getNombre());
             pstmt.setString(3, cliente.getDireccion());
-            // CORRECCIÓN: Guardamos el email del objeto cliente
             pstmt.setString(4, cliente.getEmail());
 
             pstmt.executeUpdate();
+            return true; // <-- Retornamos true si todo salió perfecto
 
         } catch (SQLException e) {
-            if (e.getSQLState().equals("23505")) { // Error de duplicado (PK)
-                JOptionPane.showMessageDialog(null, "Ya existe un cliente con esta cédula.", "Error", JOptionPane.WARNING_MESSAGE);
+            if (e.getSQLState().equals("23505")) { 
+                // Mensaje actualizado para incluir el correo:
+                JOptionPane.showMessageDialog(null, "Ya existe un cliente registrado con esta cédula o este correo electrónico.\nPor favor verifica los datos.", "Dato Duplicado", JOptionPane.WARNING_MESSAGE);
             } else {
                 e.printStackTrace();
                 JOptionPane.showMessageDialog(null, "Error al guardar cliente: " + e.getMessage(), "Error BD", JOptionPane.ERROR_MESSAGE);
             }
+            return false; // <-- Retornamos false si la base de datos lo rechazó
         }
     }
 

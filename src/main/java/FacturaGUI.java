@@ -647,14 +647,23 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
             if (!nombre.isEmpty() && !cedula.isEmpty() && !cedula.equals("0") && !ClienteStorage.clienteExiste(cedula)) {
                 int respuesta = JOptionPane.showConfirmDialog(this, "El cliente '" + nombre + "' con cédula '" + cedula + "' no existe.\n¿Desea guardarlo?", "Crear Nuevo Cliente", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
                 if (respuesta == JOptionPane.YES_OPTION) {
-                    // AQUÍ ESTABA EL ERROR: Usamos el constructor de 4 argumentos
+                    
                     Cliente nuevoCliente = new Cliente(nombre, cedula, direccion, email);
-                    ClienteStorage.guardarCliente(nuevoCliente);
+                    
+                    // --- INICIO DE LA MEJORA ---
+                    boolean guardadoExitoso = ClienteStorage.guardarCliente(nuevoCliente);
+                    
+                    if (!guardadoExitoso) {
+                        // Si hubo error (ej. correo duplicado), detenemos el método aquí
+                        // para que el usuario pueda corregir el correo antes de continuar.
+                        return; 
+                    }
+                    // --- FIN DE LA MEJORA ---
+                    
                     clienteParaFactura = nuevoCliente;
-                    // Actualizamos la vista (asumiendo que modificaste setDatosCliente para recibir email, si no, usa el antiguo)
                     setDatosCliente(nombre, cedula, direccion, email);
                 } else {
-                    // Cliente Ocasional con datos temporales (incluyendo email)
+                    // Cliente Ocasional con datos temporales
                     clienteParaFactura = new Cliente("Cliente Ocasional", "0", direccion, email);
                 }
             } else {
