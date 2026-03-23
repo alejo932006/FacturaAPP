@@ -931,6 +931,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                         imprimirFactura(archivoGuardado);
                     }
                     limpiarFormulario();
+                        if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
                     exito = true; // Éxito
                 }
             }
@@ -938,6 +939,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
             // Llamamos al método de crédito y capturamos su resultado
             exito = registrarFacturaACredito();
         }
+
         return exito;
     }
 
@@ -962,6 +964,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                 }
     
                 limpiarFormulario();
+                    if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
                 return true; // Éxito
             }
         }

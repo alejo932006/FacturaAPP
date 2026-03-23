@@ -103,6 +103,7 @@ public class ProcesarPagoGUI extends JDialog {
 
         btnConfirmar.addActionListener(e -> {
             pagoConfirmado = true;
+                if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
             dispose();
         });
     }

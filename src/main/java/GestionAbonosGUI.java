@@ -179,6 +179,8 @@ public class GestionAbonosGUI extends JDialog {
                     CuentasStorage.agregarABanco(nuevoAbono);
                 }
 
+                if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
+
             } catch (Exception e) {
                 JOptionPane.showMessageDialog(this, "Por favor, ingrese un valor numérico válido.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
                 e.printStackTrace();

@@ -210,6 +210,8 @@ public class GastosGUI extends JDialog {
                 
     
                 cargarGastosIniciales(); 
+
+                if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
                 
                 JOptionPane.showMessageDialog(this, "Gasto agregado exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             }
@@ -257,6 +259,7 @@ public class GastosGUI extends JDialog {
                     
                     if (exito) {
                         cargarGastosIniciales(); // Recargar tabla
+                        if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
                         JOptionPane.showMessageDialog(this, "Gasto actualizado.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                     }
                 } catch (NumberFormatException e) {
@@ -290,6 +293,7 @@ public class GastosGUI extends JDialog {
             
             if (exito) {
                 cargarGastosIniciales(); // Recargar tabla
+                if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
                 JOptionPane.showMessageDialog(this, "Gasto eliminado.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
             }
         }
