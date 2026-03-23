@@ -1,48 +1,50 @@
-import java.io.*;
-import java.util.Properties;
+import java.sql.*;
 
 public class CuentasStorage {
 
-    private static File getCuentasFile() {
-        return new File(PathsHelper.getDatosFolder(), "cuentas.properties");
-    }
-
-    private static Properties cargarPropiedades() {
-        Properties props = new Properties();
-        File archivo = getCuentasFile();
-        if (archivo.exists()) {
-            try (FileInputStream in = new FileInputStream(archivo)) {
-                props.load(in);
-            } catch (IOException e) {
-                e.printStackTrace();
+    // --- OBTENER SALDOS ---
+    public static double getSaldoCaja() {
+        String sql = "SELECT saldo_caja FROM saldos_cuentas WHERE id = 1";
+        try (Connection conn = ConexionDB.conectar();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getDouble("saldo_caja");
             }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
-        return props;
+        return 0.0;
     }
 
-    private static void guardarPropiedades(Properties props) {
-        try (FileOutputStream out = new FileOutputStream(getCuentasFile())) {
-            props.store(out, "Saldos de las cuentas financieras");
-        } catch (IOException e) {
+    public static double getSaldoBanco() {
+        String sql = "SELECT saldo_banco FROM saldos_cuentas WHERE id = 1";
+        try (Connection conn = ConexionDB.conectar();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return rs.getDouble("saldo_banco");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0.0;
+    }
+
+    // --- ACTUALIZAR SALDOS EN BASE DE DATOS ---
+    public static synchronized void actualizarSaldos(double nuevoSaldoCaja, double nuevoSaldoBanco) {
+        String sql = "UPDATE saldos_cuentas SET saldo_caja = ?, saldo_banco = ? WHERE id = 1";
+        try (Connection conn = ConexionDB.conectar();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, nuevoSaldoCaja);
+            pstmt.setDouble(2, nuevoSaldoBanco);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    public static double getSaldoCaja() {
-        return Double.parseDouble(cargarPropiedades().getProperty("saldo_caja", "0.0"));
-    }
-
-    public static double getSaldoBanco() {
-        return Double.parseDouble(cargarPropiedades().getProperty("saldo_banco", "0.0"));
-    }
-
-    public static synchronized void actualizarSaldos(double nuevoSaldoCaja, double nuevoSaldoBanco) {
-        Properties props = cargarPropiedades();
-        props.setProperty("saldo_caja", String.valueOf(nuevoSaldoCaja));
-        props.setProperty("saldo_banco", String.valueOf(nuevoSaldoBanco));
-        guardarPropiedades(props);
-    }
-
+    // --- MÉTODOS PÚBLICOS (Intactos para no romper el resto del programa) ---
     public static synchronized void agregarACaja(double monto) {
         actualizarSaldos(getSaldoCaja() + monto, getSaldoBanco());
     }
