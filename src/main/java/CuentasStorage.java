@@ -33,9 +33,14 @@ public class CuentasStorage {
 
     // --- ACTUALIZAR SALDOS EN BASE DE DATOS ---
     public static synchronized void actualizarSaldos(double nuevoSaldoCaja, double nuevoSaldoBanco) {
-        String sql = "UPDATE saldos_cuentas SET saldo_caja = ?, saldo_banco = ? WHERE id = 1";
+        // UPSERT: Si la fila 1 no existe, la crea. Si ya existe, solo le actualiza el saldo.
+        String sql = "INSERT INTO saldos_cuentas (id, saldo_caja, saldo_banco) " +
+                    "VALUES (1, ?, ?) " +
+                    "ON CONFLICT (id) DO UPDATE " +
+                    "SET saldo_caja = EXCLUDED.saldo_caja, saldo_banco = EXCLUDED.saldo_banco";
+                    
         try (Connection conn = ConexionDB.conectar();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setDouble(1, nuevoSaldoCaja);
             pstmt.setDouble(2, nuevoSaldoBanco);
             pstmt.executeUpdate();
