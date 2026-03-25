@@ -192,6 +192,8 @@ public class RentabilidadGUI extends JDialog {
     
     private double[] calcularCostoNeto(LocalDate inicio, LocalDate fin) {
         double costoVentas = 0, costoDevoluciones = 0;
+        
+        // --- 1. Calcular Costo de Ventas (CMV) ---
         File[] archivosFactura = PathsHelper.getFacturasFolder().listFiles((dir, name) -> name.endsWith(".txt") && !name.startsWith("ANULADA_"));
         if (archivosFactura != null) {
             for (File archivo : archivosFactura) {
@@ -217,16 +219,30 @@ public class RentabilidadGUI extends JDialog {
                 }
             }
         }
+        
+        // --- 2. Calcular Costo de Devoluciones (Lo que regresa al inventario) ---
         File[] archivosDevolucion = PathsHelper.getDevolucionesFolder().listFiles();
         if (archivosDevolucion != null) {
              for (File archivo : archivosDevolucion) {
                 try {
                     List<String> lineas = Files.readAllLines(archivo.toPath());
                     LocalDate fechaDev = LocalDate.parse(lineas.stream().filter(l -> l.startsWith("Fecha de Devolución:")).findFirst().orElse("").split(":")[1].trim());
+                    
                     if (!fechaDev.isBefore(inicio) && !fechaDev.isAfter(fin)) {
-                        double costoUnit = Double.parseDouble(lineas.stream().filter(l->l.startsWith("Costo Unitario Original:")).findFirst().orElse("").split(":")[1].trim());
-                        double cant = Double.parseDouble(lineas.stream().filter(l->l.startsWith("Cantidad Devuelta:")).findFirst().orElse("").split(":")[1].trim());
-                        costoDevoluciones += costoUnit * cant;
+                        // Búsqueda segura para evitar caídas con archivos de devoluciones viejos
+                        String lineaCosto = lineas.stream().filter(l -> l.startsWith("Costo Unitario Original:")).findFirst().orElse(null);
+                        double costoUnit = 0.0;
+                        if (lineaCosto != null && lineaCosto.contains(":")) {
+                            costoUnit = Double.parseDouble(lineaCosto.split(":")[1].trim());
+                        }
+                        
+                        String lineaCant = lineas.stream().filter(l -> l.startsWith("Cantidad Devuelta:")).findFirst().orElse(null);
+                        double cant = 0.0;
+                        if (lineaCant != null && lineaCant.contains(":")) {
+                            cant = Double.parseDouble(lineaCant.split(":")[1].trim());
+                        }
+                        
+                        costoDevoluciones += (costoUnit * cant);
                     }
                 } catch (Exception e) { 
                     System.err.println("Error procesando costo de devolución: " + archivo.getName()); 
@@ -237,17 +253,31 @@ public class RentabilidadGUI extends JDialog {
     }
 
     private double[] calcularGastosOperativos(LocalDate inicio, LocalDate fin) {
+        // 1. Calcular Gastos Operativos Normales
         double totalGastos = GastoStorage.cargarGastos().stream()
             .filter(g -> !g.getFecha().isBefore(inicio) && !g.getFecha().isAfter(fin))
             .mapToDouble(Gasto::getMonto)
             .sum();
         
-            double totalPagosCompromisos = AbonoStorage.cargarTodosLosAbonos().stream()
+        // 2. Calcular Abonos a Deuda Total
+        double totalPagosDeudaTotal = AbonoStorage.cargarTodosLosAbonos().stream()
             .filter(a -> !a.getFecha().isBefore(inicio) && !a.getFecha().isAfter(fin))
             .mapToDouble(Abono::getMontoTotal)
             .sum();
 
-            return new double[]{totalGastos, totalPagosCompromisos};
+        // 3. NUEVO: Calcular pagos realizados a Compromisos Periódicos
+        double totalPagosPeriodicos = CompromisoStorage.cargarCompromisos().stream()
+            .filter(c -> c.getTipo() == Compromiso.Tipo.PAGO_PERIODICO)
+            .mapToDouble(c -> c.getHistorialDePagos().stream() // Recorremos el historial de fechas pagadas
+                .filter(fechaPago -> !fechaPago.isBefore(inicio) && !fechaPago.isAfter(fin))
+                .mapToDouble(fechaPago -> c.getMonto()) // Por cada fecha válida, sumamos el valor de la cuota
+                .sum())
+            .sum();
+
+        // 4. Sumamos ambos tipos de pagos de compromisos
+        double totalPagosCompromisos = totalPagosDeudaTotal + totalPagosPeriodicos;
+
+        return new double[]{totalGastos, totalPagosCompromisos};
     }
 
     // --- Métodos de ayuda para construir la GUI ---
