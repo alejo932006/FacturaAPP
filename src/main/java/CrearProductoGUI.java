@@ -26,6 +26,7 @@ public class CrearProductoGUI extends JDialog {
     private JTextField txtNitProveedor; // Ahora será solo lectura
     private JComboBox<Proveedor> comboProveedores;
     private JButton btnRecargarProveedores;
+    private JComboBox<String> comboMetodoPago;
 
     // --- Componentes de la Lista ---
     private JTable tablaInventario;
@@ -209,6 +210,16 @@ public class CrearProductoGUI extends JDialog {
         gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
         lblAreaEncargada = new JLabel("Línea / Área:");
         panelCampos.add(lblAreaEncargada, gbc);
+        
+        // --- FILA 6.5: Método de Pago para la Compra ---
+        gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
+        panelCampos.add(new JLabel("Pago compra con:"), gbc);
+        
+        comboMetodoPago = new JComboBox<>(new String[]{"Efectivo (Caja)", "Transferencia (Banco)", "No Aplica / Ajuste Manual"});
+        comboMetodoPago.setToolTipText("De dónde sale el dinero para pagar este inventario.");
+        
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.anchor = GridBagConstraints.WEST;
+        panelCampos.add(comboMetodoPago, gbc);
 
         // Panel pequeño para ComboBox + Botón [+]
         JPanel panelLinea = new JPanel(new BorderLayout(5, 0));
@@ -320,6 +331,7 @@ public class CrearProductoGUI extends JDialog {
                 
                 boolean exito = ProductoStorage.guardarProducto(nuevoProducto);
                 if (exito) {
+                    procesarSalidaDinero(nombre, cantidadIngresada, costo);
                     JOptionPane.showMessageDialog(this, "Producto guardado correctamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
                     cargarProductosEnTabla();
                     limpiarFormulario();
@@ -347,6 +359,7 @@ public class CrearProductoGUI extends JDialog {
                 
                 boolean exito = ProductoStorage.actualizarProducto(productoActualizado);
                 if (exito) {
+                    procesarSalidaDinero(nombre, cantidadIngresada, costo);
                     String mensaje = "Producto actualizado.";
                     if (cantidadIngresada > 0) {
                         mensaje += "\nSe sumaron " + cantidadIngresada + " unidades al stock.";
@@ -354,6 +367,9 @@ public class CrearProductoGUI extends JDialog {
                     JOptionPane.showMessageDialog(this, mensaje, "Éxito", JOptionPane.INFORMATION_MESSAGE);
                     cargarProductosEnTabla();
                     limpiarFormulario();
+                    if (DashboardGUI.getInstance() != null) {
+                        DashboardGUI.getInstance().refrescarDatos();
+                    }
                 }
             }
             
@@ -373,6 +389,7 @@ public class CrearProductoGUI extends JDialog {
         comboUnidad.setSelectedIndex(0);
         if (comboAreaEncargada.getItemCount() > 0) comboAreaEncargada.setSelectedIndex(0);
         if (comboProveedores.getItemCount() > 0) comboProveedores.setSelectedIndex(0);
+        if (comboMetodoPago != null) comboMetodoPago.setSelectedIndex(0);
             txtNitProveedor.setText("");
         txtNitProveedor.setText("");
         
@@ -641,6 +658,33 @@ private void abrirGestionLineas() {
         
         for (Proveedor p : ProveedorStorage.listarProveedores()) {
             comboProveedores.addItem(p);
+        }
+    }
+
+    // --- NUEVA LÓGICA: Descontar dinero al comprar inventario ---
+    private void procesarSalidaDinero(String nombreProducto, double cantidadComprada, double costoUnidad) {
+        // Si no ingresó cantidad o el costo es 0, no hay movimiento de dinero
+        if (cantidadComprada <= 0 || costoUnidad <= 0) return;
+        
+        double totalCompra = cantidadComprada * costoUnidad;
+        String metodo = (String) comboMetodoPago.getSelectedItem();
+        String concepto = "Compra inventario: " + nombreProducto + " (" + cantidadComprada + " unds)";
+
+        if ("Efectivo (Caja)".equals(metodo)) {
+            // 1. Restar el dinero del DashBoard (Saldos Cuentas)
+            CuentasStorage.restarDeCaja(totalCompra);
+            
+            // 2. Registrar en los Gastos para que salga en el historial y cuadre el Arqueo
+            Gasto nuevaCompra = new Gasto("0", java.time.LocalDate.now(), concepto, totalCompra, "Efectivo");
+            GastoStorage.agregarGasto(nuevaCompra);
+            
+        } else if ("Transferencia (Banco)".equals(metodo)) {
+            // 1. Restar del banco
+            CuentasStorage.restarDeBanco(totalCompra);
+            
+            // 2. Registrar en los gastos como transferencia
+            Gasto nuevaCompra = new Gasto("0", java.time.LocalDate.now(), concepto, totalCompra, "Transferencia");
+            GastoStorage.agregarGasto(nuevaCompra);
         }
     }
 }
