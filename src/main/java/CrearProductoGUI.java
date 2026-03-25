@@ -206,20 +206,10 @@ public class CrearProductoGUI extends JDialog {
         
         btnRecargarProveedores.addActionListener(e -> cargarComboProveedores());
 
-        // --- FILA 6: Área Encargada / Línea (NUEVO DISEÑO) ---
+        // --- FILA 7: Área Encargada / Línea ---
         gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
         lblAreaEncargada = new JLabel("Línea / Área:");
         panelCampos.add(lblAreaEncargada, gbc);
-        
-        // --- FILA 6.5: Método de Pago para la Compra ---
-        gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
-        panelCampos.add(new JLabel("Pago compra con:"), gbc);
-        
-        comboMetodoPago = new JComboBox<>(new String[]{"Efectivo (Caja)", "Transferencia (Banco)", "No Aplica / Ajuste Manual"});
-        comboMetodoPago.setToolTipText("De dónde sale el dinero para pagar este inventario.");
-        
-        gbc.gridx = 1; gbc.weightx = 1.0; gbc.anchor = GridBagConstraints.WEST;
-        panelCampos.add(comboMetodoPago, gbc);
 
         // Panel pequeño para ComboBox + Botón [+]
         JPanel panelLinea = new JPanel(new BorderLayout(5, 0));
@@ -231,8 +221,18 @@ public class CrearProductoGUI extends JDialog {
         panelLinea.add(comboAreaEncargada, BorderLayout.CENTER);
         panelLinea.add(btnGestionarLineas, BorderLayout.EAST);
 
-        gbc.gridx = 1; gbc.weightx = 1.0;
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.anchor = GridBagConstraints.WEST;
         panelCampos.add(panelLinea, gbc);
+
+        // --- FILA 8: Método de Pago para la Compra ---
+        gbc.gridy++; gbc.gridx = 0; gbc.weightx = 0; gbc.anchor = GridBagConstraints.EAST;
+        panelCampos.add(new JLabel("Pago compra con:"), gbc);
+
+        comboMetodoPago = new JComboBox<>(new String[]{"Efectivo (Caja)", "Transferencia (Banco)", "No Aplica / Ajuste Manual"});
+        comboMetodoPago.setToolTipText("De dónde sale el dinero para pagar este inventario.");
+
+        gbc.gridx = 1; gbc.weightx = 1.0; gbc.anchor = GridBagConstraints.WEST;
+        panelCampos.add(comboMetodoPago, gbc);
 
         // Cargar las líneas al iniciar
         cargarLineasEnCombo();
