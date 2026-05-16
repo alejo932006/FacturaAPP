@@ -1,34 +1,45 @@
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Properties;
+import java.io.InputStream;
+import java.io.FileInputStream;
 import javax.swing.JOptionPane;
 
 public class ConexionDB {
 
-    // Configuración de la base de datos
-    private static final String URL = "jdbc:postgresql://localhost:5432/FacturaAPP";
-    private static final String USER = "postgres"; // Usuario por defecto de Postgres
-    private static final String PASSWORD = "0534";     // Sin contraseña como indicaste
-
-    // Objeto único de conexión (Singleton básico)
     private static Connection connection = null;
 
     public static Connection conectar() {
         try {
             if (connection == null || connection.isClosed()) {
-                // Carga el driver (necesario en versiones antiguas de Java, buena práctica)
-                try {
-                    Class.forName("org.postgresql.Driver");
-                } catch (ClassNotFoundException e) {
-                    JOptionPane.showMessageDialog(null, "Error: No se encontró el Driver de PostgreSQL.\nAsegúrate de incluir la librería .jar en el proyecto.", "Error de Driver", JOptionPane.ERROR_MESSAGE); // CORREGIDO
+                
+                // 1. Cargar las propiedades
+                Properties props = new Properties();
+                try (InputStream input = new FileInputStream("config.properties")) {
+                    props.load(input);
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, "Error leyendo config.properties", "Error", JOptionPane.ERROR_MESSAGE);
                     return null;
                 }
 
-                connection = DriverManager.getConnection(URL, USER, PASSWORD);
-                // System.out.println("Conexión a PostgreSQL exitosa.");
+                // 2. Construir la URL con los datos del archivo
+                String url = "jdbc:postgresql://" + props.getProperty("db.host") + ":" + 
+                             props.getProperty("db.port") + "/" + props.getProperty("db.name");
+                String user = props.getProperty("db.user");
+                String pass = props.getProperty("db.password");
+
+                try {
+                    Class.forName("org.postgresql.Driver");
+                } catch (ClassNotFoundException e) {
+                    JOptionPane.showMessageDialog(null, "Error: No se encontró el Driver de PostgreSQL.", "Error de Driver", JOptionPane.ERROR_MESSAGE);
+                    return null;
+                }
+
+                connection = DriverManager.getConnection(url, user, pass);
             }
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(null, "Error al conectar con la Base de Datos:\n" + e.getMessage(), "Error de Conexión", JOptionPane.ERROR_MESSAGE); // CORREGIDO
+            JOptionPane.showMessageDialog(null, "Error al conectar con la Base de Datos:\n" + e.getMessage(), "Error de Conexión", JOptionPane.ERROR_MESSAGE);
             e.printStackTrace();
         }
         return connection;
