@@ -15,9 +15,11 @@ CompromisosGUI.class
 FacturaGUI.class
 ClientesGUI.class
 ConfiguracionManager.class
+FacturaPdfGenerator.class
 PedidosWebGUI.class
 SeleccionarProductoGUI$1.class
 DashboardGUI.class
+OpcionesEntregaFacturaDialog.class
 VaciarDatosGUI.class
 BackupManager.class
 GastosGUI.class
@@ -73,6 +75,7 @@ GarantiaStorage.class
 UserSession.class
 CajaGUI$1.class
 PedidosWebGUI$EstadoPedidoRenderer.class
+WhatsAppService.class
 PedidosWebGUI$3.class
 CompromisosGUI$EstadoCompromisoRenderer.class
 EliminarProductoFacturaGUI$1.class
@@ -83,6 +86,7 @@ ClientesGUI$1.class
 ConsultarOrdenesGUI.class
 ProcesarPagoGUI$1.class
 CompromisosGUI$1.class
+WhatsAppService$1.class
 ConfiguracionEmpresaGUI.class
 LoginGUI.class
 CrearProductoGUI$3.class
@@ -111,6 +115,7 @@ DevolucionesGUI$2.class
 AbonoStorage.class
 FacturaGUI$2.class
 UserSession$Rol.class
+OpcionesEntregaFacturaDialog$OpcionEntrega.class
 VerFacturaGUI.class
 DrawerManager.class
 ReporteVentasGUI$ReporteItem.class

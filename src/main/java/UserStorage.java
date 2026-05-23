@@ -7,6 +7,23 @@ import java.util.Map;
 
 public class UserStorage {
 
+    /**
+     * Crea el usuario admin por defecto solo si la tabla usuarios está vacía.
+     * Evita consultas innecesarias en cada inicio de la aplicación.
+     */
+    public static void asegurarAdminInicial() {
+        String sql = "SELECT COUNT(*) FROM usuarios";
+        try (Connection conn = ConexionDB.conectar();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next() && rs.getInt(1) == 0) {
+                crearAdminPorDefecto();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     // Carga todos los usuarios desde la Base de Datos
     private static Map<String, String[]> cargarTodosLosUsuarios() {
         Map<String, String[]> usuarios = new HashMap<>();

@@ -4,31 +4,30 @@ public class CuentasStorage {
 
     // --- OBTENER SALDOS ---
     public static double getSaldoCaja() {
-        String sql = "SELECT saldo_caja FROM saldos_cuentas WHERE id = 1";
-        try (Connection conn = ConexionDB.conectar();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-            if (rs.next()) {
-                return rs.getDouble("saldo_caja");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return 0.0;
+        return getSaldos()[0];
     }
 
     public static double getSaldoBanco() {
-        String sql = "SELECT saldo_banco FROM saldos_cuentas WHERE id = 1";
+        return getSaldos()[1];
+    }
+
+    /** Devuelve [saldoCaja, saldoBanco] en una sola consulta. */
+    public static double[] getSaldosActuales() {
+        return getSaldos();
+    }
+
+    private static double[] getSaldos() {
+        String sql = "SELECT saldo_caja, saldo_banco FROM saldos_cuentas WHERE id = 1";
         try (Connection conn = ConexionDB.conectar();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
             if (rs.next()) {
-                return rs.getDouble("saldo_banco");
+                return new double[]{rs.getDouble("saldo_caja"), rs.getDouble("saldo_banco")};
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return 0.0;
+        return new double[]{0.0, 0.0};
     }
 
     // --- ACTUALIZAR SALDOS EN BASE DE DATOS ---
@@ -51,18 +50,22 @@ public class CuentasStorage {
 
     // --- MÉTODOS PÚBLICOS (Intactos para no romper el resto del programa) ---
     public static synchronized void agregarACaja(double monto) {
-        actualizarSaldos(getSaldoCaja() + monto, getSaldoBanco());
+        double[] saldos = getSaldos();
+        actualizarSaldos(saldos[0] + monto, saldos[1]);
     }
 
     public static synchronized void restarDeCaja(double monto) {
-        actualizarSaldos(getSaldoCaja() - monto, getSaldoBanco());
+        double[] saldos = getSaldos();
+        actualizarSaldos(saldos[0] - monto, saldos[1]);
     }
 
     public static synchronized void agregarABanco(double monto) {
-        actualizarSaldos(getSaldoCaja(), getSaldoBanco() + monto);
+        double[] saldos = getSaldos();
+        actualizarSaldos(saldos[0], saldos[1] + monto);
     }
 
     public static synchronized void restarDeBanco(double monto) {
-        actualizarSaldos(getSaldoCaja(), getSaldoBanco() - monto);
+        double[] saldos = getSaldos();
+        actualizarSaldos(saldos[0], saldos[1] - monto);
     }
 }

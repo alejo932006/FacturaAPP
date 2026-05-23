@@ -17,8 +17,8 @@ public class FacturaApp {
                 e.printStackTrace();
             }
 
-            // Asegurar que el admin tenga contraseña (puedes quitar esto después si ya la cambiaste)
-            UserStorage.actualizarContrasena("admin", "1234");
+            // Asegurar usuario admin inicial solo si la BD no tiene usuarios
+            UserStorage.asegurarAdminInicial();
 
             // Verificar licencia e iniciar Login
             if (LicenseManager.checkLicense()) {

@@ -194,7 +194,7 @@ public class ProductoStorage {
             return false;
         } finally {
             if (conn != null) {
-                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+                try { conn.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
             }
         }
     }

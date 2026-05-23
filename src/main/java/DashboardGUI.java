@@ -3,6 +3,10 @@ import javax.swing.*;
 import java.awt.*;
 import java.io.File;
 import java.nio.file.Files;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -190,8 +194,9 @@ public class DashboardGUI extends JFrame {
         lblValorClientes.setText(contarClientes());
         NumberFormat formato = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("es-CO"));
         formato.setMaximumFractionDigits(0);
-        lblSaldoCaja.setText(formato.format(CuentasStorage.getSaldoCaja()));
-        lblSaldoBanco.setText(formato.format(CuentasStorage.getSaldoBanco()));
+        double[] saldos = CuentasStorage.getSaldosActuales();
+        lblSaldoCaja.setText(formato.format(saldos[0]));
+        lblSaldoBanco.setText(formato.format(saldos[1]));
         
         actualizarVencimientos();
     }
@@ -285,10 +290,17 @@ public class DashboardGUI extends JFrame {
     }
 
     private String contarProductosBajosDeStock() {
-        long count = ProductoStorage.cargarProductos().stream()
-            .filter(p -> p.getCantidad() < 5 && p.getEstado().equals("Activo"))
-            .count();
-        return String.valueOf(count);
+        String sql = "SELECT COUNT(*) FROM productos WHERE cantidad < 5 AND estado = 'Activo'";
+        try (Connection conn = ConexionDB.conectar();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                return String.valueOf(rs.getInt(1));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return "0";
     }
 
     private String contarClientes() {
@@ -298,13 +310,13 @@ public class DashboardGUI extends JFrame {
     private void actualizarVencimientos() {
         modeloListaVencimientos.clear();
         List<Compromiso> compromisos = CompromisoStorage.cargarCompromisos();
+        List<Abono> todosLosAbonos = AbonoStorage.cargarTodosLosAbonos();
         LocalDate hoy = LocalDate.now();
         LocalDate limite = hoy.plusDays(5);
 
         List<Compromiso> proximos = compromisos.stream()
             .filter(c -> {
-                List<Abono> abonos = AbonoStorage.cargarTodosLosAbonos();
-                double capitalAbonado = abonos.stream()
+                double capitalAbonado = todosLosAbonos.stream()
                     .filter(a -> a.getCompromisoId().equals(c.getId()))
                     .mapToDouble(Abono::getMontoCapital).sum();
                 return (c.getMonto() - capitalAbonado) > 0;
