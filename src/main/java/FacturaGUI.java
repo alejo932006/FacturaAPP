@@ -925,11 +925,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                     }
                     
                     File archivoGuardado = registrarFacturaEnArchivo();
-                    
-                    int respuesta = JOptionPane.showConfirmDialog(this, "Factura registrada en Base de Datos. ¿Desea imprimirla?", "Éxito", JOptionPane.YES_NO_OPTION);
-                    if (respuesta == JOptionPane.YES_OPTION) {
-                        imprimirFactura(archivoGuardado);
-                    }
+                    procesarOpcionesEntregaFactura(archivoGuardado);
                     limpiarFormulario();
                         if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
                     exito = true; // Éxito
@@ -958,11 +954,7 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
                 GeneradorReportesGUI.generarReciboCreditoAutomatico(factura);
     
                 JOptionPane.showMessageDialog(this, "Venta a crédito registrada exitosamente.", "Éxito", JOptionPane.INFORMATION_MESSAGE);
-                
-                if (JOptionPane.showConfirmDialog(this, "¿Imprimir factura?", "Imprimir", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                    imprimirFactura(archivoFactura);
-                }
-    
+                procesarOpcionesEntregaFactura(archivoFactura);
                 limpiarFormulario();
                     if (DashboardGUI.getInstance() != null) DashboardGUI.getInstance().refrescarDatos();
                 return true; // Éxito
@@ -971,7 +963,18 @@ public class FacturaGUI extends JFrame implements ClienteSeleccionListener {
         return false; // Cancelado o falló
     }
 
-    // Copia y pega este método. Este es el ajuste final.
+    private void procesarOpcionesEntregaFactura(File archivoTxt) {
+        if (archivoTxt == null || factura == null) {
+            return;
+        }
+        OpcionesEntregaFacturaDialog.OpcionEntrega opcion = OpcionesEntregaFacturaDialog.mostrar(this);
+        switch (opcion) {
+            case IMPRIMIR -> imprimirFactura(archivoTxt);
+            case WHATSAPP -> WhatsAppService.enviarFacturaPorWhatsApp(this, factura);
+            default -> { /* omitir */ }
+        }
+    }
+
     public void imprimirFactura(java.io.File archivoFactura) {
         try {
             List<String> lineasOriginales = Files.readAllLines(archivoFactura.toPath());

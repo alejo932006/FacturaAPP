@@ -109,6 +109,7 @@ ConsultarOrdenesGUI$1.class
 CajaStorage.class
 DevolucionesGUI$2.class
 AbonoStorage.class
+FacturaGUI$2.class
 UserSession$Rol.class
 VerFacturaGUI.class
 DrawerManager.class

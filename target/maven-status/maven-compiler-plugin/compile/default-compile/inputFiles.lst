@@ -37,6 +37,7 @@ C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\Factura.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\FacturaApp.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\FacturaGUI.java
+C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\FacturaPdfGenerator.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\FacturaPrinter.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\FacturaStorage.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\GarantiaStorage.java
@@ -50,6 +51,7 @@ C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\LineaStorage.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\LoginGUI.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\MachineIdentifier.java
+C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\OpcionesEntregaFacturaDialog.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\PasswordManager.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\PathsHelper.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\PedidosWebGUI.java
@@ -70,3 +72,4 @@ C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\UserStorage.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\VaciarDatosGUI.java
 C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\VerFacturaGUI.java
+C:\Users\Pcmastersuperrace\Desktop\PROGRAMAS\Factura APP POSTGRES\src\main\java\WhatsAppService.java

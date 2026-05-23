@@ -26,6 +26,7 @@ public class Factura {
     }
 
     public String getNumeroFactura() { return numeroFactura; }
+    public Empresa getEmpresa() { return empresa; }
     public Cliente getCliente() { return cliente; }
     public List<DetalleFactura> getDetalles() { return detalles; }
     
